@@ -1,4 +1,6 @@
-﻿using Tools_XNA_dotNET_Framework;
+﻿using System;
+using System.CodeDom.Compiler;
+using Tools_XNA_dotNET_Framework;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -20,11 +22,15 @@ namespace Networking_Game
 
         public Game1()
         {
+            Console.WriteLine("Creating " + nameof(Game1));
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+            // Set to borderless window
             Window.IsBorderless = true;
-            Window.AllowUserResizing = true;
+            // Show mouse
             IsMouseVisible = true;
+            // Enable multisampling
+            graphics.PreferMultiSampling = true;
         }
 
         /// <summary>
@@ -35,21 +41,50 @@ namespace Networking_Game
         /// </summary>
         protected override void Initialize()
         {
-            gridLayout = new GridLayout(25,50,true,1.4f,Color.White);
+            Console.WriteLine("Starting "+ nameof(Game1));
 
-            NewGame(new Point(25));
+            // Get screen size
+            int width = graphics.GraphicsDevice.DisplayMode.Width;
+            int height = graphics.GraphicsDevice.DisplayMode.Height;
+
+            // Set initial window size
+            int windowSize = width > height ? height : width;
+            graphics.PreferredBackBufferWidth = windowSize;
+            graphics.PreferredBackBufferHeight = windowSize;
+            graphics.ApplyChanges();
+
+            // Move window to the center
+            //Window.Position = new Point((width /2) - (windowSize /2), (height / 2) - (windowSize / 2));
+            // Move window to the upper right corner
+            Window.Position = new Point((width) - (windowSize), height - (windowSize )); 
+
+            gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Color.White, new Color(Color.White, 55));
+
+            // Start game
+            NewGame(new Point(9,9));
 
             base.Initialize();
         }
 
+        private void InitializeCommands()
+        {
+        }
+
         private void NewGame(Point gridSize)
         {
-            grid = new Grid(gridSize);
+            grid = new Grid(gridSize); 
             camera = new Camera2D(this) {Origin = Vector2.Zero};
-            playArea = new Rectangle(0, 0,
-                (int)(gridLayout.SquareSize * gridSize.X + gridLayout.Margin * 2),
-                (int)(gridLayout.SquareSize * gridSize.Y + gridLayout.Margin * 2));
-            //camera.ZoomToMatchHeight(playArea);
+            playArea = gridLayout.CalculatePlayArea(gridSize.X, gridSize.Y);
+
+            // Zoom 
+            if (playArea.Width > playArea.Height) camera.ZoomToMatchWidth(playArea);
+            else camera.ZoomToMatchHeight(playArea);
+
+            // crop window to be size of grid
+            Vector2 transform = Vector2.Transform(new Vector2(playArea.Right, playArea.Bottom), camera.GetViewMatrix());
+            graphics.PreferredBackBufferWidth = (int)Math.Round(transform.X);
+            graphics.PreferredBackBufferHeight = (int)Math.Round(transform.Y);
+            graphics.ApplyChanges();
         }
 
         /// <summary>
@@ -80,14 +115,6 @@ namespace Networking_Game
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            // Move and zoom camera to show entire grid
-            //camera.LookAt(camera.ScreenToWorld(new Vector2(Mouse.GetState().X, Mouse.GetState().Y)));
-            camera.LookAt(Mouse.GetState().Position);
-
-            //look at center of grid
-            //camera.ZoomToMatchHeight(playArea);
-            //camera.ZoomToMatchWidth(playArea);
-            //camera.Position = new Vector2(Mouse.GetState().Position.X, Mouse.GetState().Position.Y);
             base.Update(gameTime);
         }
 
@@ -99,10 +126,12 @@ namespace Networking_Game
         {
             GraphicsDevice.Clear(Color.Black);
 
-            //spriteBatch.Begin(SpriteSortMode.Deferred,null,null,null,null,null,camera.GetViewMatrix());
-            spriteBatch.Begin();
-            grid.Draw(spriteBatch, gridLayout);
-            spriteBatch.DrawFilledRectangle(playArea, new Color(Color.Red,55));
+            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive, null, null, null, null, camera.GetViewMatrix());
+            grid.Draw(spriteBatch, gridLayout, camera);
+
+            // Draw a red rectangle over playArea
+            //spriteBatch.DrawFilledRectangle(playArea, new Color(Color.Red,55));
+            
             spriteBatch.End();
 
             base.Draw(gameTime);
