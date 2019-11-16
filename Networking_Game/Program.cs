@@ -1,10 +1,7 @@
 ﻿using System;
-using System.CodeDom.Compiler;
+using System.Windows;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Net.Mime;
-using System.Runtime.CompilerServices;
+using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.CSharp;
@@ -22,31 +19,12 @@ namespace Networking_Game
     /// </summary>
     public static class Program
     {
-        const int SWP_NOZORDER = 0x4;
-        const int SWP_NOACTIVATE = 0x10;
 
-        [DllImport("kernel32")]
-        private static extern bool AllocConsole();
-        [DllImport("kernel32")]
-        private static extern IntPtr GetConsoleWindow();
-        [DllImport("User32")]
-        private static extern bool SetForegroundWindow(IntPtr handle);
-        [DllImport("user32")]
-        static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int flags);
-        [DllImport("kernel32")]
-        private static extern bool FreeConsole();
-        public static IntPtr Handle => GetConsoleWindow();
+        public static ConsoleManager ConsoleManager;
+        public static Thread GameThread;
+        public static Thread ConsoleThread;
+        public static LocalGame Game;
 
-        /// <summary>
-        /// Sets the console window location and size in pixels
-        /// </summary>
-        public static void SetWindowPosition(int x, int y, int width, int height)
-        {
-            SetWindowPos(Handle, IntPtr.Zero, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-        }
-        private static Thread gameThread;
-
-        static Game1 game;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -54,70 +32,34 @@ namespace Networking_Game
         private static void Main()
         {
             // Create console
-            //FreeConsole();
-            AllocConsole();
-            //Console.SetWindowPosition(0, 0);
+            ConsoleManager = new ConsoleManager();
 
-            // Create game
-            gameThread = new Thread(new ThreadStart(() =>
+            // Create Game thread
+            GameThread = new Thread(() =>
             {
-                game = new Game1();
-                game.Run();
-            }));
-            gameThread.Start();
+                Game = new LocalGame();
+                Game.Run();
+            });
 
-            Console.WriteLine("Compiling...", Color.Gray);
-            DynamicCompiling.CompileAndRun(@"using System; class Program{[STAThread] private static void Main(){Console.WriteLine(""HELP"");}}");
-            Thread.Sleep(1000);
-
-            // Set focus to console
-            Console.WriteLine("Setting Console to active window: " + (SetForegroundWindow(GetConsoleWindow()) ? "Success" : "Failed"));
-
-            // Move console to top left
-            Console.WriteLine("Moving console", Color.Gray);
-            SetWindowPosition(0,0, 860,1080);
-            // Console loop
-            StartLoop:
-            while (true)
+            ConsoleThread = new Thread(() =>
             {
-                // Get input
-                string input = Console.ReadLine();
+                ConsoleManager.Initialize();
+                ConsoleManager.Run();
+            });
 
-                // Check custom commands
-                foreach (KeyValuePair<string, Commands.Code> keyValuePair in Commands.Dictionary)
-                {
-                    if (input == keyValuePair.Key)
-                    {
-                        keyValuePair.Value.Invoke();
-                        goto StartLoop;
-                    }
-                }
+            // Initialize game
+            GameThread.Name = nameof(GameThread);
+            GameThread.Start();
+            // Wait for game
+            while (Game == null) { }
+            while (!Game.IsActive) { }
 
-                // Check standard commands
-                switch (input)
-                {
-#if DEBUG
-                    case "hello":
-                    {
-                        Console.WriteLine("Hello world!");
-                        break;
-                    }
-#endif
-                    case "exit":
-                    {
-                        game.Exit();
-                        return;
-                    }
-                         
-                    default:
-                    {
-                        Console.WriteLine($"Unrecognized command: {input}");
-                        break;
-                    }
-                }
-            }
-
+            // Initialize Console
+            ConsoleThread.Name = nameof(ConsoleThread);
+            ConsoleThread.Start();
         }
+
+
     }
 #endif
 }

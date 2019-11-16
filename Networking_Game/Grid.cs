@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -8,6 +9,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Tools_XNA_dotNET_Framework;
+using Color = Microsoft.Xna.Framework.Color;
+using Console = Colorful.Console;
+using Point = Microsoft.Xna.Framework.Point;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
+
 
 namespace Networking_Game
 {
@@ -16,15 +22,16 @@ namespace Networking_Game
     /// </summary>
     public struct GridSquare
     {
-        public PlayerShape? PlayerShape { get; set; }
-        public Color? PlayerColor { get; set; }
+        public Player Owner;
 
         public void Draw(SpriteBatch spriteBatch, Vector2 position, GridLayout gridLayout)
         {
-            if (PlayerShape != null && PlayerColor != null)
-            {
-                Player.Draw(spriteBatch, position, (PlayerShape)PlayerShape, (Color)PlayerColor, gridLayout);
-            }
+            Owner?.Draw(spriteBatch, position, gridLayout);
+        }
+
+        public void ClaimSquare(Player player)
+        {
+            Owner = player;
         }
     }
 
@@ -63,10 +70,13 @@ namespace Networking_Game
     /// </summary>
     public class Grid
     {
-        public GridSquare[] Squares;
+        public readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
+
+        private GridSquare[] Squares;
 
         private readonly int sizeX;
         private readonly int sizeY;
+
 
         public Grid(Point gridSize) : this(gridSize.X, gridSize.Y) { }
 
@@ -80,6 +90,33 @@ namespace Networking_Game
 
             int size = sizeX * sizeY;
             Squares = new GridSquare[size];
+            for (int i = 0; i < size; i++)
+            {
+                Squares[i] = new GridSquare();
+            }
+        }
+
+        /// <summary>
+        /// Claims a square on the grid for the player
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="player"></param>
+        /// <returns>successfully claimed square</returns>
+        public bool ClaimSquare(Point position, Player player)
+        {
+            if (Squares[position.Y * sizeY + position.X].Owner == null)
+            {
+                Squares[position.Y * sizeY + position.X].ClaimSquare(player);
+                Console.WriteLine($"{player.Name} Claimed square {position}", System.Drawing.Color.FromKnownColor(player.Color));
+                return true;
+            }
+
+            return false;
+        }
+
+        private GridSquare GetGridSquare(Point position)
+        {
+            return Squares[position.Y * sizeY + position.X]; // TODO Check for null (index out of range)
         }
 
         /// <summary>
@@ -99,6 +136,84 @@ namespace Networking_Game
             int squareY = (int)(position.Y / (gridLayout.SquareSize));
 
             return new Point(squareX, squareY);
+        }
+
+        /// <summary>
+        /// Checks if the square has three or more squares in a line with the same owner
+        /// </summary>
+        /// <param name="checkPoint">The point to check</param>
+        /// <param name="owner">The owner</param>
+        /// <returns>array of matching other points in the line</returns>
+        public List<List<Point>> IsInARow(Point checkPoint, Player owner)
+        {
+            var lines = new List<Tuple<Point, Point>>();
+
+            // check neighboring squares
+            for (int y = -1; y < 2; y++)
+            {
+                for (int x = -1; x < 2; x++)
+                {
+                    Point point = new Point(x, y); // this point is i=0
+                    // If this square has the same owner...
+                    if (GetGridSquare(point + checkPoint).Owner == owner)
+                    {
+                        // Keep going in the same direction...
+                        int i = 1;
+                        while (GetGridSquare(new Point(point.X * (i +1), point.Y * (i + 1)) + checkPoint).Owner == owner)
+                        {
+                            i++;
+                        }
+                        // Save point if it kept going past checkpoint
+                        Point p1 = new Point(point.X * i, point.Y * i) + checkPoint;
+                        // And opposite direction
+                        i = -1;
+                        while (GetGridSquare(new Point(point.X * (i - 1), point.Y * (i - 1)) + checkPoint).Owner == owner)
+                        {
+                            i--;
+                        }
+                        // Save opposite point
+                        Point p2 = new Point(point.X * i, point.Y * i) + checkPoint;
+
+                        // If the line is longer than 2 squares...
+                        if (Vector2.Distance(p1.ToVector2(), p2.ToVector2()) >= 3)
+                        {
+                            // Add points to list
+                            lines.Add(new Tuple<Point, Point>(p1,p2));
+                        }
+
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Checks the adjacent squares for the same owner
+        /// </summary>
+        /// <param name="checkPoint"></param>
+        /// <param name="owner"></param>
+        /// <returns>The point relative to checkPoint that has the same owner, or null if no points were found</returns>
+        private List<Point> CheckNeighboringSquares(Point checkPoint, Player owner)
+        {
+            List<Point> branchingPoints = new List<Point>();
+
+            // check neighboring squares
+            for (int y = -1; y < 2; y++)
+            {
+                for (int x = -1; x < 2; x++)
+                {
+                    Point point = new Point(x, y);
+                    // If this square has the same owner...
+                    if (GetGridSquare(point + checkPoint).Owner == owner)
+                    {
+                        // add this point to output
+                        branchingPoints.Add(point);
+                    }
+                }
+            }
+
+            return null;
         }
 
         public void Draw(SpriteBatch spriteBatch, GridLayout gridLayout, Camera2D camera)
@@ -123,14 +238,18 @@ namespace Networking_Game
             // Upper left corner of current square
             float x, y;
             
+            // Iterate through Y
             for (int i = 0; i < sizeY; i++)
             {
                 y = gridLayout.SquareSize * i + gridLayout.Position.Y;
+                // Iterate through X
                 for (int j = 0; j < sizeX; j++)
                 {
                     x = gridLayout.SquareSize * j + gridLayout.Position.X;
+
                     // Draw owner image
                     Squares[i * sizeY + j].Draw(spriteBatch, new Vector2(x,y), gridLayout);
+
                     // Draw image on the square the mouse is in
                     if (mouseSquare != null)
                         if (mouseSquare.Value.X == j && mouseSquare.Value.Y == i)
