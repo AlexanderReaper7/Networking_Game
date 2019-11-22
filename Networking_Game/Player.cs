@@ -6,8 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using Tools_XNA_dotNET_Framework;
 using Color = Microsoft.Xna.Framework.Color;
+using Point = Microsoft.Xna.Framework.Point;
 
 namespace Networking_Game
 {
@@ -16,6 +18,8 @@ namespace Networking_Game
         Circle,
         Cross,
         Rectangle,
+        Triangle,
+        Diamond,
     }
 
     /// <summary>
@@ -29,10 +33,12 @@ namespace Networking_Game
         {
             get =>  knownColor;
             private set { 
-                color = XNAColor(System.Drawing.Color.FromKnownColor(value));
+                color = System.Drawing.Color.FromKnownColor(value).ToXNAColor();
                 knownColor = value;
             }
         }
+
+        public int Score { get; set; }
 
         private Color color;
         private KnownColor knownColor;
@@ -40,73 +46,41 @@ namespace Networking_Game
         public Player(string name, PlayerShape shape, KnownColor color)
         {
             Name = name;
-            Shape = shape;
+            Shape = shape; 
             Color = color;
         }
 
-        #region ColorConverters
-
-        private Color XNAColor(System.Drawing.Color color)
-        {
-            return new Color(color.R, color.G, color.B, color.A);
-        }
-
-        private System.Drawing.Color SystemColor(Color color)
-        {
-            return System.Drawing.Color.FromArgb(color.A, color.R, color.G, color.B);
-        }
-
-        #endregion
-
-        public static void Draw(SpriteBatch spriteBatch, Vector2 position, PlayerShape shape, Color color, GridLayout gridLayout)
-        {
-            switch (shape)
-            {
-                case PlayerShape.Circle:
-                    float halfSquare = gridLayout.SquareSize / 2f;
-                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness *0.5f) , halfSquare - (gridLayout.LineThickness * 1.5f),32, color);
-                    break;
-
-                case PlayerShape.Cross:
-                    float x1, x2, y1, y2;
-                    x1 = position.X;
-                    x2 = position.X + gridLayout.SquareSize;
-                    y1 = position.Y;
-                    y2 = position.Y + gridLayout.SquareSize;
-                    spriteBatch.DrawLine(x1, y1, x2, y2, color);
-                    spriteBatch.DrawLine(x1, y2, x2, y1, color);
-                    break;
-
-                case PlayerShape.Rectangle:
-                    spriteBatch.DrawRectangle(position + new Vector2(gridLayout.LineThickness, gridLayout.LineThickness *2) , new Vector2(gridLayout.SquareSize - (gridLayout.LineThickness *4)), color);
-                    break;
-
-                default:
-                    throw new NotImplementedException(nameof(shape) + " is not implemented yet.");
-            }
-        }
+        
 
         public void Draw(SpriteBatch spriteBatch, Vector2 position, GridLayout gridLayout)
         {
+            float halfSquare = gridLayout.SquareSize / 2f;
             switch (Shape)
             {
                 case PlayerShape.Circle:
-                    float halfSquare = gridLayout.SquareSize / 2f;
                     spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 32, color);
                     break;
 
                 case PlayerShape.Cross:
                     float x1, x2, y1, y2;
-                    x1 = position.X;
-                    x2 = position.X + gridLayout.SquareSize;
-                    y1 = position.Y;
-                    y2 = position.Y + gridLayout.SquareSize;
+                    x1 = position.X + gridLayout.LineThickness * 2;
+                    x2 = position.X + gridLayout.SquareSize - gridLayout.LineThickness *2;
+                    y1 = position.Y + gridLayout.LineThickness * 2;
+                    y2 = position.Y + gridLayout.SquareSize - gridLayout.LineThickness *2;
                     spriteBatch.DrawLine(x1, y1, x2, y2, color);
-                    spriteBatch.DrawLine(x1, y2, x2, y1, color);
+                    spriteBatch.DrawLine(x2, y1 + gridLayout.LineThickness/2, x1, y2 + gridLayout.LineThickness/2, color);
                     break;
 
                 case PlayerShape.Rectangle:
                     spriteBatch.DrawRectangle(position + new Vector2(gridLayout.LineThickness, gridLayout.LineThickness * 2), new Vector2(gridLayout.SquareSize - (gridLayout.LineThickness * 4)), color);
+                    break;
+
+                case PlayerShape.Triangle:
+                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 3, color);
+                    break;
+
+                case PlayerShape.Diamond:
+                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 4, color);
                     break;
 
                 default:

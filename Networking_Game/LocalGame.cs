@@ -1,13 +1,6 @@
 ﻿using System;
-using System.CodeDom.Compiler;
-using System.ComponentModel;
-using System.Configuration;
 using System.Drawing;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
-using System.Xml;
+using System.Threading;
 using Tools_XNA_dotNET_Framework;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -27,12 +20,16 @@ namespace Networking_Game
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
-        private GridLayout gridLayout;
-        private Grid grid;
-        private Camera2D camera;
+        public GridLayout gridLayout;
+        public Grid grid;
+        public Camera2D camera;
         private Rectangle playArea;
         private Player[] players;
-        private MouseState PreviousMouseState;
+        private MouseState previousMouseState;
+
+        private bool newTurn;
+        public int activePlayerIndex;
+        public Player ActivePlayer => players[activePlayerIndex];
 
         public LocalGame()
         {
@@ -57,30 +54,14 @@ namespace Networking_Game
         /// </summary>
         protected override void Initialize()
         {
-            // Get screen size
-            int width = graphics.GraphicsDevice.DisplayMode.Width;
-            int height = graphics.GraphicsDevice.DisplayMode.Height;
-
-            // Set initial window size TODO fix bug here
-            int windowSize = width > height ? height : width;
-            graphics.PreferredBackBufferWidth = windowSize;
-            graphics.PreferredBackBufferHeight = windowSize;
-            graphics.ApplyChanges();
-
-            // Move window to the center
-            //Window.Position = new Point((width /2) - (windowSize /2), (height / 2) - (windowSize / 2));
-            // Move window to the upper right corner
-            Window.Position = new Point((width) - (windowSize), height - (windowSize)); 
-
             // Create grid layout settings
             gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
 
             // Initialize mouse state
-            PreviousMouseState = Mouse.GetState();
+            previousMouseState = Mouse.GetState();
 
             // Start game
-            GetGameSettingsInput(out Point gridSize, out int maxPlayers);
-            NewGame(gridSize, maxPlayers);
+            NewGame();
 
             base.Initialize();
         }
@@ -94,9 +75,9 @@ namespace Networking_Game
                 Console.WriteLine("Input is not an integer, try again.", Color.Red);
                 goto X_INPUT;
             }
-            if (result < 3)
+            if (result < 3 || result > 2048)
             {
-                Console.WriteLine("Input cannot be less than 3", Color.Red);
+                Console.WriteLine("Input must be in range 3 to 2048", Color.Red);
                 goto X_INPUT;
             }
             gridSize.X = result;
@@ -108,7 +89,7 @@ namespace Networking_Game
                 Console.WriteLine("Input is not an integer, try again.", Color.Red);
                 goto Y_INPUT;
             }
-            if (result < 3)
+            if (result < 3 || result > 2048)
             {
                 Console.WriteLine("Input cannot be less than 3", Color.Red);
                 goto Y_INPUT;
@@ -117,19 +98,25 @@ namespace Networking_Game
 
             // Get max players
             M_INPUT:
-            Console.Write("Input maximum amount of players: ", Color.ForestGreen);
+            Console.Write("Input maximum amount of players: ");
             if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
             {
                 Console.WriteLine("Input is not an integer, try again.", Color.Red);
                 goto M_INPUT;
             }
-            if (result < 1)
+            if (result < 1 || result > Grid.MaxPlayers)
             {
-                Console.WriteLine("Input cannot be less than 1", Color.Red);
+                Console.WriteLine($"Input must be in range 1 to {Grid.MaxPlayers}", Color.Red);
                 goto M_INPUT;
             }
             maxPlayers = result;
 
+        }
+
+        private void NewGame()
+        {
+            GetGameSettingsInput(out Point gridSize, out int maxPlayers);
+            NewGame(gridSize, maxPlayers);
         }
 
         private void NewGame(Point gridSize, int maxPlayers)
@@ -138,15 +125,31 @@ namespace Networking_Game
             camera = new Camera2D(this) {Origin = Vector2.Zero};
             playArea = gridLayout.CalculatePlayArea(gridSize.X, gridSize.Y);
 
+            // Get screen size
+            Point screenSize = new Point(graphics.GraphicsDevice.DisplayMode.Width, graphics.GraphicsDevice.DisplayMode.Height);
+
+            // Set initial window size
+            Point maxWindowSize = screenSize.X > screenSize.Y ? new Point(screenSize.Y): new Point(screenSize.X);
+            graphics.PreferredBackBufferWidth = screenSize.X - ConsoleManager.ConsoleWindow.Right-8;
+            graphics.PreferredBackBufferHeight = screenSize.Y;
+            graphics.ApplyChanges();
+
             // Zoom 
             if (playArea.Width > playArea.Height) camera.ZoomToMatchWidth(playArea);
             else camera.ZoomToMatchHeight(playArea);
-
-            // crop window to be size of grid
+            // Crop window to be size of grid
             Vector2 transform = Vector2.Transform(new Vector2(playArea.Right, playArea.Bottom), camera.GetViewMatrix());
             graphics.PreferredBackBufferWidth = (int)Math.Round(transform.X);
             graphics.PreferredBackBufferHeight = (int)Math.Round(transform.Y);
             graphics.ApplyChanges();
+
+            // Move window next to console
+            //Window.Position = new Point(ConsoleManager.ConsoleWindow.Right -8, 0);
+            // Move window to the center
+            //Window.Position = new Point((width /2) - (windowSize /2), (height / 2) - (windowSize / 2));
+            // Move window to the upper right corner
+            Window.Position = new Point(screenSize.X - graphics.PreferredBackBufferWidth, screenSize.Y - graphics.PreferredBackBufferHeight);
+
 
             // Create players
             players = new Player[maxPlayers];
@@ -158,6 +161,7 @@ namespace Networking_Game
                 players[i] = newPlayer;
             }
 
+            newTurn = true;
             Console.WriteLine("Starting game");
         }
 
@@ -270,25 +274,42 @@ namespace Networking_Game
             // Update Mouse
             MouseState mouseState = Mouse.GetState();
 
+            // Write whose turn it is
+            if (newTurn)
+            {
+                Console.Write($"{ActivePlayer.Name}´s turn, ", Color.FromKnownColor(ActivePlayer.Color));
+                newTurn = false;
+            }
+
             // Place marker on mouse left click
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
-                if (PreviousMouseState.LeftButton == ButtonState.Released)
+                if (previousMouseState.LeftButton == ButtonState.Released)
                 {
                     // Get the position of the mouse in the world
-                    Vector2 mouseWorldPos = camera.ScreenToWorld(new Vector2(mouseState.X, mouseState.Y));
+                    Vector2 mouseWorldPos = Program.Game.camera.ScreenToWorld(new Vector2(mouseState.X, mouseState.Y));
                     // Get the square that contains that position
-                    Point? sq = grid.SquareContains(mouseWorldPos, gridLayout);
+                    Point? sq = Program.Game.grid.SquareContains(mouseWorldPos, Program.Game.gridLayout);
                     // If that square is valid, then claim it
                     if (sq != null)
                     {
-                        grid.ClaimSquare((Point)sq, players[0]);
+                        if (Program.Game.grid.ClaimSquare((Point) sq, ActivePlayer))
+                        {
+                            // Change active player
+                            Program.Game.NextPlayer();
+                        }
                     }
                 }
             }
 
-            PreviousMouseState = mouseState;
+            previousMouseState = mouseState;
             base.Update(gameTime);
+        }
+
+        private void NextPlayer()
+        {
+            activePlayerIndex = (activePlayerIndex + 1) % players.Length;
+            newTurn = true;
         }
 
         /// <summary>
@@ -300,6 +321,7 @@ namespace Networking_Game
             GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Black);
 
             spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera.GetViewMatrix());
+            //spriteBatch.Begin();
             grid.Draw(spriteBatch, gridLayout, camera);
             spriteBatch.End();
 

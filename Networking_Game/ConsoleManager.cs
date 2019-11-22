@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Runtime.InteropServices;
-using CommandDotNet.MicrosoftCommandLineUtils;
+using System.Windows.Forms;
+using Microsoft.Xna.Framework;
+using Color = System.Drawing.Color;
 using Console = Colorful.Console;
 
 namespace Networking_Game
 {
-    public class ConsoleManager
+    public class ConsoleManager //TODO write documentation / comments
     {
         const int SWP_NOZORDER = 0x4;
         const int SWP_NOACTIVATE = 0x10;
@@ -25,6 +26,8 @@ namespace Networking_Game
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, int flags);
 
         private static IntPtr Handle => GetConsoleWindow();
+
+        private static Point ScreenSize => new Point(SystemInformation.PrimaryMonitorSize.Width, SystemInformation.PrimaryMonitorSize.Height);
 
         public interface ICommand
         {
@@ -54,6 +57,11 @@ namespace Networking_Game
             activeCommands.Remove(key);
         }
 
+        /// <summary>
+        /// Position and size of the console window
+        /// </summary>
+        public static Rectangle ConsoleWindow { get; private set; }
+
         public ConsoleManager()
         {
             AllocConsole();
@@ -64,17 +72,23 @@ namespace Networking_Game
         /// </summary>
         public static void SetWindowPosition(int x, int y, int width, int height)
         {
-            SetWindowPos(Handle, IntPtr.Zero, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+            if (SetWindowPos(Handle, IntPtr.Zero, x, y, width, height, SWP_NOZORDER | SWP_NOACTIVATE))
+            {
+                // Success
+                ConsoleWindow = new Rectangle(x,y, width, height);
+            }
+            else
+            {
+                // Fail
+                Console.WriteLine("Error, failed setting console window size and position.", Color.Red);
+            }
         }
 
         public void Initialize()
         {
-            // Set focus to console
-            Console.WriteLine("Setting Console to active window: " + (SetForegroundWindow(Handle) ? "Success" : "Failed"), Color.Gray);
-            // Move console to top left
-            Console.WriteLine("Moving console", Color.Gray);
-            SetWindowPosition(-7, -7, 800, Program.Game.GraphicsDevice.Adapter.CurrentDisplayMode.Height);
-
+            Console.WriteLine("Initializing console", Color.Gray);
+            // Set console size and move to top left
+            SetWindowPosition(-8, -1,  MathHelper.Clamp((ScreenSize.X) / 3, 700, 1000) , ScreenSize.Y +8);
         }
 
         public static bool IsPriorityInput = false;
@@ -94,15 +108,38 @@ namespace Networking_Game
             priorityInput = null;
             return temp;
         }
+
+        /// <summary>
+        /// Starts the console loop
+        /// </summary>
         public void Run()
         {
             // Console loop
-            START_LOOP:
             while (true)
             {
+                START_LOOP:
                 // Get input
                 string input = Console.ReadLine();
+                // Split into words separated by Space
+                string[] processedInput = input.Split(' ');
+                string commandString = processedInput[0].ToLower();
 
+                // Check standard commands
+                switch (commandString)
+                {
+                    case "exit":
+                    {
+                        Program.Exit();
+                        return;
+                    }
+                    case "restart":
+                    {
+                        Program.Restart();
+                        goto START_LOOP;
+                    }
+                }
+
+                // If priority input is active, pass string to outside and restart loop
                 if (IsPriorityInput)
                 {
                     priorityInput = input;
@@ -110,35 +147,19 @@ namespace Networking_Game
                     goto START_LOOP;
                 }
 
-
                 // Check Active commands
-                foreach (KeyValuePair<string, Action> keyValuePair in activeCommands)
+                foreach (KeyValuePair<string, Action> command in activeCommands)
                 {
-                    if (input.StartsWith(keyValuePair.Key))
+                    if (commandString == command.Key)
                     {
-                        keyValuePair.Value.Invoke();
+                        command.Value.Invoke();
                         goto START_LOOP;
                     }
                 }
 
-                // Check standard commands
-                switch (input)
-                {
-                    case "exit":
-                    {
-                        Program.Game.Exit();
-                        return;
-                    }
-                    // If no command was found
-                    default:
-                    {
-                        Console.WriteLine($"Unrecognized command: {input}");
-                        break;
-                    }
-                }
+                // If no command was found
+                Console.WriteLine($"Unrecognized command: {commandString}");
             }
         }
     }
-
-
 }

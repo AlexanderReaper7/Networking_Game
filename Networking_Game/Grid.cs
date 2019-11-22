@@ -23,15 +23,34 @@ namespace Networking_Game
     public struct GridSquare
     {
         public Player Owner;
+        public bool IsInLine;
+
+        public GridSquare(Player owner = null, bool isInLine = false)
+        {
+            Owner = owner;
+            IsInLine = isInLine;
+        }
 
         public void Draw(SpriteBatch spriteBatch, Vector2 position, GridLayout gridLayout)
         {
-            Owner?.Draw(spriteBatch, position, gridLayout);
+            if (IsInLine)
+            {
+                spriteBatch.DrawFilledRectangle(new Rectangle((int)position.X, (int)position.Y, (int)gridLayout.SquareSize, (int)gridLayout.SquareSize), System.Drawing.Color.FromKnownColor(Owner.Color).ToXNAColor());
+            }
+            else
+            {
+                Owner?.Draw(spriteBatch, position, gridLayout);
+            }
         }
 
-        public void ClaimSquare(Player player)
+        public void Claim(Player player)
         {
             Owner = player;
+        }
+
+        public void SetIsInLine(bool value)
+        {
+            IsInLine = value;
         }
     }
 
@@ -70,13 +89,13 @@ namespace Networking_Game
     /// </summary>
     public class Grid
     {
-        public readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
+        public static readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
 
-        private GridSquare[] Squares;
+        private GridSquare[,] Squares;
 
         private readonly int sizeX;
         private readonly int sizeY;
-
+        private const int minLineLength = 2;
 
         public Grid(Point gridSize) : this(gridSize.X, gridSize.Y) { }
 
@@ -88,11 +107,13 @@ namespace Networking_Game
             this.sizeX = sizeX;
             this.sizeY = sizeY;
 
-            int size = sizeX * sizeY;
-            Squares = new GridSquare[size];
-            for (int i = 0; i < size; i++)
+            Squares = new GridSquare[sizeX,sizeY];
+            for (int x = 0; x < Squares.GetLength(0); x++)
             {
-                Squares[i] = new GridSquare();
+                for (int y = 0; y < Squares.GetLength(1); y++)
+                {
+                    Squares[x, y] = new GridSquare();
+                }
             }
         }
 
@@ -104,20 +125,32 @@ namespace Networking_Game
         /// <returns>successfully claimed square</returns>
         public bool ClaimSquare(Point position, Player player)
         {
-            if (Squares[position.Y * sizeY + position.X].Owner == null)
+            try
             {
-                Squares[position.Y * sizeY + position.X].ClaimSquare(player);
-                Console.WriteLine($"{player.Name} Claimed square {position}", System.Drawing.Color.FromKnownColor(player.Color));
-                return true;
+                // If the square does not already have an owner
+                if (Squares[position.X, position.Y].Owner == null)
+                {
+                    // Claim the square
+                    Squares[position.X, position.Y].Claim(player);
+                    Console.WriteLine($"{player.Name} Claimed square {position}", System.Drawing.Color.FromKnownColor(player.Color));
+                    // Check for line
+                    List<Point> newlyLinedPoints = CheckForLine(position, player);
+
+                    return true;
+                }
+
+                return false;
             }
-
-            return false;
+            catch (IndexOutOfRangeException)
+            {
+                return false;
+            }
         }
 
-        private GridSquare GetGridSquare(Point position)
-        {
-            return Squares[position.Y * sizeY + position.X]; // TODO Check for null (index out of range)
-        }
+        //private ref GridSquare GetGridSquare(Point position)
+        //{
+        //    return ref Squares[position.X, position.Y];
+        //}
 
         /// <summary>
         /// Calculates what square contains the position
@@ -132,8 +165,8 @@ namespace Networking_Game
             // Remove position offset
             position -= gridLayout.Position;
             // Calculate which square
-            int squareX = (int)(position.X / (gridLayout.SquareSize));
-            int squareY = (int)(position.Y / (gridLayout.SquareSize));
+            int squareX = (int)(position.X / gridLayout.SquareSize);
+            int squareY = (int)(position.Y / gridLayout.SquareSize);
 
             return new Point(squareX, squareY);
         }
@@ -143,77 +176,125 @@ namespace Networking_Game
         /// </summary>
         /// <param name="checkPoint">The point to check</param>
         /// <param name="owner">The owner</param>
-        /// <returns>array of matching other points in the line</returns>
-        public List<List<Point>> IsInARow(Point checkPoint, Player owner)
+        /// <returns>the new line points</returns>
+        public List<Point> CheckForLine(Point checkPoint, Player owner)
         {
-            var lines = new List<Tuple<Point, Point>>();
-
-            // check neighboring squares
-            for (int y = -1; y < 2; y++)
+            List<Point> output = new List<Point>();
+            try
             {
-                for (int x = -1; x < 2; x++)
-                {
-                    Point point = new Point(x, y); // this point is i=0
-                    // If this square has the same owner...
-                    if (GetGridSquare(point + checkPoint).Owner == owner)
-                    {
-                        // Keep going in the same direction...
-                        int i = 1;
-                        while (GetGridSquare(new Point(point.X * (i +1), point.Y * (i + 1)) + checkPoint).Owner == owner)
-                        {
-                            i++;
-                        }
-                        // Save point if it kept going past checkpoint
-                        Point p1 = new Point(point.X * i, point.Y * i) + checkPoint;
-                        // And opposite direction
-                        i = -1;
-                        while (GetGridSquare(new Point(point.X * (i - 1), point.Y * (i - 1)) + checkPoint).Owner == owner)
-                        {
-                            i--;
-                        }
-                        // Save opposite point
-                        Point p2 = new Point(point.X * i, point.Y * i) + checkPoint;
+                // Return if the square is already in a line
+                if (Squares[checkPoint.X, checkPoint.Y].IsInLine) return output;
 
-                        // If the line is longer than 2 squares...
-                        if (Vector2.Distance(p1.ToVector2(), p2.ToVector2()) >= 3)
+                // check neighboring squares that are not already part of a line
+                for (int y = -1; y < 2; y++)
+                {
+                    for (int x = -1; x < 2; x++)
+                    {
+                        // Skip 0,0 
+                        if (x == 0 && y == 0) continue;
+                        // This point is i=0
+                        Point point = new Point(x, y); 
+                        // Skip if this square does not exist or is already in a line
+                        try
                         {
-                            // Add points to list
-                            lines.Add(new Tuple<Point, Point>(p1,p2));
+                            if (Squares[checkPoint.X + point.X, checkPoint.Y + point.Y].IsInLine) continue;
                         }
+                        catch (Exception)
+                        {
+                            continue;
+                        }
+
+                        // If this square has the same owner...
+                        if (Squares[point.X + checkPoint.X, point.Y + checkPoint.Y].Owner == owner)
+                        {
+                            List<Point> points = new List<Point>();
+                            // Add to points
+                            points.Add(point + checkPoint);
+                            // Keep going in the same direction... TODO: remove duplicate code
+                            bool branching;
+                            int i = 1;
+                            Point branchPoint = new Point(point.X * (i + 1), point.Y * (i + 1)) + checkPoint;
+                            try
+                            {
+                                // Keep branching if the point has the same owner and is not already in a line
+                                branching = Squares[branchPoint.X, branchPoint.Y].Owner == owner && Squares[branchPoint.X, branchPoint.Y].IsInLine == false;
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                branching = false;
+                            }
+                            while (branching)
+                            {
+                                // Add point to list
+                                points.Add(branchPoint);
+                                i++;
+                                branchPoint = new Point(point.X * (i + 1), point.Y * (i + 1)) + checkPoint;
+                                try
+                                {
+                                    // Keep branching if the point has the same owner and is not already in a line
+                                    branching = Squares[branchPoint.X, branchPoint.Y].Owner == owner && Squares[branchPoint.X, branchPoint.Y].IsInLine == false;
+                                }
+                                catch (IndexOutOfRangeException)
+                                {
+                                    branching = false;
+                                }
+                            }
+
+                            // And opposite direction
+                            i = -1;
+                            branchPoint = new Point(point.X * (i - 1), point.Y * (i - 1)) + checkPoint;
+
+                            try
+                            {
+                                // Keep branching if the point has the same owner and is not already in a line
+                                branching = Squares[branchPoint.X, branchPoint.Y].Owner == owner && Squares[branchPoint.X, branchPoint.Y].IsInLine == false;
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                branching = false;
+                            }
+                            while (branching)
+                            {
+                                // Add point to list
+                                points.Add(branchPoint);
+                                i--;
+                                branchPoint = new Point(point.X * (i - 1), point.Y * (i - 1)) + checkPoint;
+                                try
+                                {
+                                    // Keep branching if the point has the same owner and is not already in a line
+                                    branching = Squares[branchPoint.X, branchPoint.Y].Owner == owner && Squares[branchPoint.X, branchPoint.Y].IsInLine == false;
+                                }
+                                catch (IndexOutOfRangeException )
+                                {
+                                    branching = false;
+                                }
+                            }
+
+                            if (points.Count >= minLineLength)
+                            {
+                                foreach (Point p in points)
+                                {
+                                    Squares[p.X,p.Y].SetIsInLine(true);
+                                }
+
+                                return output;
+                            }
+
+                            return new List<Point>();
+                            //TODO: remove duplicate points? are there any?
+                        }
+
+
 
                     }
                 }
             }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Checks the adjacent squares for the same owner
-        /// </summary>
-        /// <param name="checkPoint"></param>
-        /// <param name="owner"></param>
-        /// <returns>The point relative to checkPoint that has the same owner, or null if no points were found</returns>
-        private List<Point> CheckNeighboringSquares(Point checkPoint, Player owner)
-        {
-            List<Point> branchingPoints = new List<Point>();
-
-            // check neighboring squares
-            for (int y = -1; y < 2; y++)
+            catch (IndexOutOfRangeException)
             {
-                for (int x = -1; x < 2; x++)
-                {
-                    Point point = new Point(x, y);
-                    // If this square has the same owner...
-                    if (GetGridSquare(point + checkPoint).Owner == owner)
-                    {
-                        // add this point to output
-                        branchingPoints.Add(point);
-                    }
-                }
+                return new List<Point>();
             }
 
-            return null;
+            return new List<Point>();
         }
 
         public void Draw(SpriteBatch spriteBatch, GridLayout gridLayout, Camera2D camera)
@@ -248,7 +329,7 @@ namespace Networking_Game
                     x = gridLayout.SquareSize * j + gridLayout.Position.X;
 
                     // Draw owner image
-                    Squares[i * sizeY + j].Draw(spriteBatch, new Vector2(x,y), gridLayout);
+                    Squares[j,i].Draw(spriteBatch, new Vector2(x,y), gridLayout);
 
                     // Draw image on the square the mouse is in
                     if (mouseSquare != null)
