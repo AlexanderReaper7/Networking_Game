@@ -93,6 +93,11 @@ namespace Networking_Game
 
         public static bool IsPriorityInput = false;
         private static string priorityInput = null;
+
+        /// <summary>
+        /// Gets input from console
+        /// </summary>
+        /// <returns>The input from user</returns>
         public static string GetPriorityInput()   
         {
             if (IsPriorityInput)

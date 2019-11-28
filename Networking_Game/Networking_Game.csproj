@@ -49,10 +49,14 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="ConsoleManager.cs" />
-    <Compile Include="LocalGame.cs" />
-    <Compile Include="Grid.cs" />
-    <Compile Include="Player.cs" />
+    <Compile Include="ClientServer\GameClient.cs" />
+    <Compile Include="ClientServer\GameServer.cs" />
+    <Compile Include="Core\ConsoleManager.cs" />
+    <Compile Include="Core\GameCore.cs" />
+    <Compile Include="Core\Grid.cs" />
+    <Compile Include="Local\GameLocal.cs" />
+    <Compile Include="Peer2Peer\GamePeer.cs" />
+    <Compile Include="Core\Player.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -107,6 +111,7 @@
       <Name>ProcessRestartHelper</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\MonoGame\v3.0\MonoGame.Content.Builder.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

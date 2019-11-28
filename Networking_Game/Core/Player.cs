@@ -29,7 +29,7 @@ namespace Networking_Game
     {
         public string Name { get; private set; }
         public PlayerShape Shape { get; private set; }
-        public KnownColor Color
+        public KnownColor Color // TODO: change valid colors so you can always see the color and there´s no similar ones.
         {
             get =>  knownColor;
             private set { 

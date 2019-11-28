@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -91,11 +92,13 @@ namespace Networking_Game
     {
         public static readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
 
-        private GridSquare[,] Squares;
+        private GridSquare[,] squares;
 
         private readonly int sizeX;
         private readonly int sizeY;
         private const int minLineLength = 3;
+
+        public GridSquare[,] Squares => squares;
 
         public Grid(Point gridSize) : this(gridSize.X, gridSize.Y) { }
 
@@ -107,12 +110,12 @@ namespace Networking_Game
             this.sizeX = sizeX;
             this.sizeY = sizeY;
 
-            Squares = new GridSquare[sizeX,sizeY];
-            for (int x = 0; x < Squares.GetLength(0); x++)
+            squares = new GridSquare[sizeX,sizeY];
+            for (int x = 0; x < squares.GetLength(0); x++)
             {
-                for (int y = 0; y < Squares.GetLength(1); y++)
+                for (int y = 0; y < squares.GetLength(1); y++)
                 {
-                    Squares[x, y] = new GridSquare();
+                    squares[x, y] = new GridSquare();
                 }
             }
         }
@@ -122,20 +125,21 @@ namespace Networking_Game
         /// </summary>
         /// <param name="position"></param>
         /// <param name="player"></param>
-        /// <returns>successfully claimed square</returns>
+        /// <returns>Successfully claimed square</returns>
         public bool ClaimSquare(Point position, Player player)
         {
             try
             {
                 // If the square does not already have an owner
-                if (Squares[position.X, position.Y].Owner == null)
+                if (squares[position.X, position.Y].Owner == null)
                 {
                     // Claim the square
-                    Squares[position.X, position.Y].Claim(player);
+                    squares[position.X, position.Y].Claim(player);
                     Console.WriteLine($"{player.Name} Claimed square {position}", System.Drawing.Color.FromKnownColor(player.Color));
                     // Check for line
                     List<Point> newlyLinedPoints = CheckForLine(position, player);
-
+                    // Add score squared to total amount of points
+                    player.Score += newlyLinedPoints.Count * newlyLinedPoints.Count;
                     return true;
                 }
 
@@ -146,11 +150,6 @@ namespace Networking_Game
                 return false;
             }
         }
-
-        //private ref GridSquare GetGridSquare(Point position)
-        //{
-        //    return ref Squares[position.X, position.Y];
-        //}
 
         /// <summary>
         /// Calculates what square contains the position
@@ -188,7 +187,7 @@ namespace Networking_Game
             // Check neighboring squares that are not already part of a line
             foreach (Point point in directions)
             {
-                List<Point> points = new List<Point>() {checkPoint};
+                List<Point> points = new List<Point> {checkPoint};
                 int j = 1, i = j;
                 while (true)
                 {
@@ -215,22 +214,22 @@ namespace Networking_Game
                 {
                     foreach (Point p in points)
                     {
-                        Squares[p.X, p.Y].SetIsInLine(true);
+                        squares[p.X, p.Y].SetIsInLine(true);
                     }
                     // add to output
                     output.AddRange(points);
                 }
             }
 
-            return new List<Point>();
+            return output;
         }
 
         private bool? IsValidBranchPoint(Point branchPoint, Player owner)
         {
             try
             {
-                return Squares[branchPoint.X, branchPoint.Y].Owner == owner &&
-                       Squares[branchPoint.X, branchPoint.Y].IsInLine == false;
+                return squares[branchPoint.X, branchPoint.Y].Owner == owner &&
+                       squares[branchPoint.X, branchPoint.Y].IsInLine == false;
             }
             catch (Exception)
             {
@@ -264,7 +263,7 @@ namespace Networking_Game
                     x = gridLayout.SquareSize * j + gridLayout.Position.X;
 
                     // Draw owner image
-                    Squares[j,i].Draw(spriteBatch, new Vector2(x,y), gridLayout);
+                    squares[j,i].Draw(spriteBatch, new Vector2(x,y), gridLayout);
 
                     // Draw image on the square the mouse is in
                     if (mouseSquare != null)

@@ -12,6 +12,9 @@ using Microsoft.Xna.Framework;
 using Tools_XNA_dotNET_Framework;
 using Color = System.Drawing.Color;
 using Colorful;
+using Networking_Game.ClientServer;
+using Networking_Game.Local;
+using Networking_Game.Peer2Peer;
 using Console = Colorful.Console;
 
 namespace Networking_Game
@@ -22,10 +25,23 @@ namespace Networking_Game
     /// </summary>
     public static class Program
     {
+        public static Thread ConsoleThread;
         public static ConsoleManager ConsoleManager;
         public static Thread GameThread;
-        public static Thread ConsoleThread;
-        public static LocalGame Game;
+        public static Game Game;
+        public static GameServer Server;
+
+        public const string AppId = "NetworkingGame";
+        public const int DefaultPort = 14242;
+
+        private enum StartCommand
+        {
+            Local,
+            P2P,
+            Client,
+            Server,
+            ClientAndServer,
+        }
 
         /// <summary>
         /// The main entry point for the application.
@@ -33,34 +49,139 @@ namespace Networking_Game
         [STAThread]
         private static void Main()
         {
+            // Start console
+            InitializeConsole();
+
+            // Wait for console to get ready TODO: Actually check for when ConsoleManager is ready
+            Thread.Sleep(1000);
+
+            // Ask what game to start
+            StartCommand command;
+            while (true)
+            {
+                // Write available commands
+                Console.WriteLine("Pick one of the following commands", Color.White);
+                foreach (string commandName in Enum.GetNames(typeof(StartCommand))) // TODO: Also number the commands
+                {
+                    Console.WriteLine(commandName, Color.White);
+                }
+                // Get and parse input
+                if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out command))
+                {
+                    Console.WriteLine("Input invalid, try again.", Color.Red);
+                }
+                // Break loop on successful parse
+                else break;
+            }
+
+            // Start game
+            switch (command)
+            {
+                case StartCommand.Local:
+                    StartLocal();
+                    break;
+                case StartCommand.P2P:
+                    StartPeerToPeer();
+                    break;
+                case StartCommand.Client:
+                    StartClient();
+                    break;
+                case StartCommand.Server:
+                    StartServer();
+                    break;
+                case StartCommand.ClientAndServer:
+                    StartClientAndServer();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private static void InitializeConsole()
+        {
             // Create console
             ConsoleManager = new ConsoleManager();
 
-            // Create Game thread
-            GameThread = new Thread(() =>
-            {
-                Game = new LocalGame();
-                Game.Run();
-            });
-
-            // Create Console thread
+            // Create console thread
             ConsoleThread = new Thread(() =>
             {
                 ConsoleManager.Initialize();
                 ConsoleManager.Run();
             });
 
-            // Initialize Console
-            ConsoleThread.Name = nameof(ConsoleThread);
+            // Start console thread
+            ConsoleThread.Name = nameof(ConsoleManager);
             ConsoleThread.Start();
+        }
 
-            // Wait
-            Thread.Sleep(100);
+        /// <summary>
+        /// Starts the local game version
+        /// </summary>
+        private static void StartLocal()
+        {
+            // Create local game thread
+            GameThread = new Thread(() =>
+            {
+                Game = new GameLocal();
+                Game.Run();
+            });
 
-            // Initialize game
-            GameThread.Name = nameof(GameThread);
+            GameThread.Name = nameof(GameLocal);
             GameThread.Start();
+        }
 
+        /// <summary>
+        /// Starts the peer to peer version
+        /// </summary>
+        private static void StartPeerToPeer()
+        {
+            GameThread = new Thread(() =>
+            {
+                Game = new GamePeer();
+                Game.Run();
+            });
+
+            GameThread.Name = nameof(GamePeer);
+            GameThread.Start();
+        }
+
+        /// <summary>
+        /// Starts the server
+        /// </summary>
+        private static void StartServer()
+        {
+            GameThread = new Thread(() =>
+            {
+                Server = new GameServer();
+                Server.StartServer();
+                Server.ReadMessages();
+            });
+
+            GameThread.Name = nameof(GameServer);
+            GameThread.Start();
+        }
+
+        /// <summary>
+        /// Starts the client
+        /// </summary>
+        private static void StartClient()
+        {
+            GameThread = new Thread(() =>
+            {
+                Game = new GameClient();
+                Game.Run();
+            });
+
+            GameThread.Name = nameof(GameClient);
+            GameThread.Start();
+        }
+
+        /// <summary>
+        /// Starts both a client and a server
+        /// </summary>
+        private static void StartClientAndServer()
+        {
+            throw new NotImplementedException();
         }
 
         public static void Restart()
