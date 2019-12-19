@@ -40,30 +40,25 @@ namespace Networking_Game.ClientServer
             clients = new List<NetPeer>();
         }
 
+        private void SendGameInformation()
+        {
+            
+        }
+
         public void ReadMessages()
         {
             NetIncomingMessage message;
-            var stop = false;
+            bool run = true;
 
-            while (!stop)
+            while (run)
             {
                 while ((message = server.ReadMessage()) != null)
                 {
                     switch (message.MessageType)
                     {
                         case NetIncomingMessageType.Data:
-                            {
-                                Console.WriteLine("I got smth!");
-                                var data = message.ReadString();
-                                Console.WriteLine(data);
-
-                                if (data == "exit")
-                                {
-                                    stop = true;
-                                }
-
-                                break;
-                            }
+                            ReadData(message);
+                            break;
                         case NetIncomingMessageType.DebugMessage:
                             Console.WriteLine(message.ReadString());
                             break;
@@ -80,16 +75,30 @@ namespace Networking_Game.ClientServer
                                 Console.WriteLine("{0} has disconnected.", message.SenderConnection.Peer.Configuration.LocalAddress);
                             }
                             break;
+                        case NetIncomingMessageType.ConnectionApproval:
+                            ReadConnectionAttempt(message);
+                            break;
                         default:
-                            Console.WriteLine("Unhandled message type: {message.MessageType}");
+                            Console.WriteLine($"Unhandled message type: {message.MessageType}");
                             break;
                     }
                     server.Recycle(message);
                 }
             }
+        }
 
-            Console.WriteLine("Shutdown package \"exit\" received. Press any key to finish shutdown");
-            Console.ReadKey();
+        private void ReadConnectionAttempt(NetIncomingMessage message)
+        {
+            LoginCommand command = new LoginCommand(message);
+            command.Run();
+        }
+
+        private void ReadData(NetIncomingMessage message)
+        {
+            // Read what type of packet was received
+            PacketType packetType = (PacketType) message.ReadByte();
+
+             message.Data
         }
     }
 }

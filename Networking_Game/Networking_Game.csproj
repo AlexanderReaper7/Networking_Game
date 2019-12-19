@@ -49,6 +49,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ClientServer\Data.cs" />
     <Compile Include="ClientServer\GameClient.cs" />
     <Compile Include="ClientServer\GameServer.cs" />
     <Compile Include="Core\ConsoleManager.cs" />
