@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Security.AccessControl;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -104,8 +99,8 @@ namespace Networking_Game
 
         public Grid(int sizeX, int sizeY)
         {
-            if (sizeX < 3) throw new ArgumentOutOfRangeException(nameof(sizeX), "Must be greater than 2");
-            if (sizeY < 3) throw new ArgumentOutOfRangeException(nameof(sizeY), "Must be greater than 2");
+            if (sizeX < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeX), "Must be greater than 2");// TODO: fix error message
+            if (sizeY < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeY), "Must be greater than 2");
 
             this.sizeX = sizeX;
             this.sizeY = sizeY;

@@ -19,6 +19,10 @@ namespace Networking_Game.ClientServer
         public void StartServer()
         {
             NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId) { Port = Program.DefaultPort , EnableUPnP = true};
+            config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
+            config.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
+            config.EnableMessageType(NetIncomingMessageType.StatusChanged);
+
             server = new NetServer(config);
             server.Start();
 
@@ -89,8 +93,8 @@ namespace Networking_Game.ClientServer
 
         private void ReadConnectionAttempt(NetIncomingMessage message)
         {
-            LoginCommand command = new LoginCommand(message);
-            command.Run();
+            LoginCommand command = new LoginCommand();
+            command.Run(this, message);
         }
 
         private void ReadData(NetIncomingMessage message)

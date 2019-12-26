@@ -24,7 +24,7 @@ namespace Networking_Game.ClientServer
         private Player localPlayer;
         private NetClient client;
 
-        public GameClient()
+        public GameClient() : base()
         {
             // Create player
             GetPlayerSettingsInput(out localPlayer);
@@ -40,11 +40,6 @@ namespace Networking_Game.ClientServer
             // Send player
         }
 
-        private void SendPlayer()
-        {
-            SendMessage(localPlayer.Name + localPlayer.Shape + localPlayer.Color);
-        }
-
         private void StartClient(string ip, int port = Program.DefaultPort)
         {
             NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId);
@@ -58,7 +53,9 @@ namespace Networking_Game.ClientServer
         public NetOutgoingMessage CreateJoinGameMessage()
         {
             NetOutgoingMessage message = client.CreateMessage();
-            message.WriteAllFields();
+            message.WriteAllFields(localPlayer);
+
+            return message;
         }
 
         public void SendMessage(string text)

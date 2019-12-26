@@ -19,7 +19,7 @@ namespace Networking_Game
     }
 
     /// <summary>
-    /// The local version of the game
+    /// The core of the game
     /// </summary>
     public class GameCore : Game
     {
@@ -67,7 +67,10 @@ namespace Networking_Game
         }
 
 
-
+        /// <summary>
+        /// Gets input for a player
+        /// </summary>
+        /// <param name="player"></param>
         protected void GetPlayerSettingsInput(out Player player)
         {
             // Get name TODO: refactor into while loop BUG: name should not be empty
