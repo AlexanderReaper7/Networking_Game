@@ -11,7 +11,7 @@ using Lidgren.Network;
 namespace Networking_Game.ClientServer
 {
 
-    public enum PacketType : byte
+    public enum PacketType : UInt16
     {
         Login,
         ClaimSquare,

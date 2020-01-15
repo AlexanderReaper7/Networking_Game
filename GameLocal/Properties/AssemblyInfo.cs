@@ -1,16 +1,16 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Networking_Game")]
-[assembly: AssemblyProduct("Networking_Game")]
+[assembly: AssemblyTitle("GameLocal")]
+[assembly: AssemblyProduct("GameLocal")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyCopyright("The MIT License (MIT) Copyright (c) 2019 Alexander Öberg")]
+[assembly: AssemblyCopyright("Copyright ©  2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("000910b6-0329-484f-8aba-caa71092094e")]
+[assembly: Guid("c23cf872-a1e4-4ffc-93bc-2ddf3d5e4c89")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -33,6 +33,4 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.279.279.7301")]
-
-[assembly: AssemblyInformationalVersion("1.0.279")]
+[assembly: AssemblyFileVersion("1.0.0.0")]

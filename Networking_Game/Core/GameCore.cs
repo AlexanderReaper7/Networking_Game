@@ -35,6 +35,7 @@ namespace Networking_Game
 
         protected GameType gameType;
         protected int turnNumber;
+        protected bool newTurn;
         protected int activePlayerIndex;
         protected Player ActivePlayer => players[activePlayerIndex];
 

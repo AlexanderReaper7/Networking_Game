@@ -1,34 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Lidgren.Network;
-using Tools_XNA_dotNET_Framework;
 
 namespace Networking_Game.ClientServer
 {
-    class PlayerConnection : NetPeer
-    {
-        Player player;
-
-        public PlayerConnection()
-        {
-
-        }
-    }
     /// <summary>
     /// The server for the client-server version of the game
     /// </summary>
-    public class GameServer
+    public class GameServer : GameCore
     {
         private NetServer server;
-        private List<PlayerConnection> clients;
+        private List<NetPeer> clients;
 
         public void StartServer()
         {
-            NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId) { Port = Program.DefaultPort, EnableUPnP = true};
+            NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId) { Port = Program.DefaultPort , EnableUPnP = true};
             config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
             config.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
             config.EnableMessageType(NetIncomingMessageType.StatusChanged);
@@ -51,7 +38,7 @@ namespace Networking_Game.ClientServer
                 Console.WriteLine("Server not started...");
                 throw new Exception("Server not started");
             }
-            clients = new List<PlayerConnection>();
+            clients = new List<NetPeer>();
         }
 
         private void SendGameInformation()
