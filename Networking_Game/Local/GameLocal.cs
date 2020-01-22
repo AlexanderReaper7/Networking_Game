@@ -38,7 +38,6 @@ namespace Networking_Game.Local
         {
             GetGameSettingsInput(out Point gridSize, out int maxPlayers);
             NewGame(gridSize, maxPlayers);
-            gameType = GameType.FillBoard;
         }
 
         private void NewGame(Point gridSize, int maxPlayers)

@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Tools_XNA_dotNET_Framework;
 using Color = Microsoft.Xna.Framework.Color;
+using Console = Colorful.Console;
 using Point = Microsoft.Xna.Framework.Point;
 
 namespace Networking_Game
@@ -88,5 +89,70 @@ namespace Networking_Game
             }
         }
 
+        /// <summary>
+        /// Gets input for a player
+        /// </summary>
+        /// <param name="player"></param>
+        public static Player GetPlayerSettingsInput()
+        {
+            // Get name TODO: refactor into while loop BUG: name should not be empty
+            N_INPUT:
+            Colorful.Console.Write("Input name:  ", System.Drawing.Color.White);
+            string name = ConsoleManager.GetPriorityInput();
+            const int maxNameLength = 12;
+            if (name.Length > maxNameLength)
+            {
+                Colorful.Console.WriteLine($"That name is too long, max length is {maxNameLength}.", System.Drawing.Color.Red);
+                goto N_INPUT;
+            }
+
+            // Get shape TODO: refactor into while loop
+            S_INPUT:
+            // Write available shapes
+            Colorful.Console.WriteLine("Available shapes: ", System.Drawing.Color.White);
+            foreach (var s in Enum.GetNames(typeof(PlayerShape)))
+            {
+                Colorful.Console.WriteLine(s, System.Drawing.Color.White);
+            }
+            Colorful.Console.Write("Input shape: ", System.Drawing.Color.White);
+            string str = ConsoleManager.GetPriorityInput();
+            PlayerShape shape;
+            if (int.TryParse(str, out int shapeInt))
+            {
+                if (shapeInt < 1 || shapeInt > Enum.GetNames(typeof(PlayerShape)).Length)
+                {
+                    Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                    goto S_INPUT;
+                }
+                shape = (PlayerShape)shapeInt - 1;
+            }
+            else
+            {
+                if (!Enum.TryParse(str, true, out shape))
+                {
+                    Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                    goto S_INPUT;
+                }
+            }
+
+            // Get color TODO: make example colors random TODO: refactor into while loop
+            C_INPUT:
+            System.Drawing.Color[] exampleColors = new System.Drawing.Color[] { System.Drawing.Color.Red, System.Drawing.Color.Blue, System.Drawing.Color.Yellow, System.Drawing.Color.Cyan, System.Drawing.Color.PeachPuff, System.Drawing.Color.White, };
+            Colorful.Console.WriteLine("Example colors: ", System.Drawing.Color.White);
+            foreach (System.Drawing.Color exampleColor in exampleColors)
+            {
+                Colorful.Console.Write(exampleColor.ToKnownColor() + " ", exampleColor);
+            }
+            Colorful.Console.WriteLine();
+            Colorful.Console.Write("Input color: ", System.Drawing.Color.White);
+            if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out KnownColor color))
+            {
+                Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                goto C_INPUT;
+            }
+            // TODO: check if the combination of color and shape is already in use 
+            Console.WriteLine($"Created player {name} using {color} {shape}.", System.Drawing.Color.FromKnownColor(color));
+            return new Player(name, shape, color);
+        }
     }
 }

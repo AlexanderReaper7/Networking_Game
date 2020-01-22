@@ -1,22 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Networking_Game;
+
 
 namespace GameClient
 {
-#if WINDOWS || LINUX
-    /// <summary>
-    /// The main class.
-    /// </summary>
     public static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
-        [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
-            using (var game = new Game1())
+            using (var game = new Networking_Game.ClientServer.GameClient())
+            {
                 game.Run();
+            }
         }
     }
-#endif
 }

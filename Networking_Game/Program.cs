@@ -152,8 +152,8 @@ namespace Networking_Game
         {
             GameThread = new Thread(() =>
             {
-                Server = new GameServer();
-                Server.StartServer();
+                //Server = new GameServer();
+                //Server.StartServer();
                 Server.ReadMessages();
             });
 

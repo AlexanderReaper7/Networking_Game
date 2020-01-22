@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using Lidgren.Network;
 using Tools_XNA_dotNET_Framework;
@@ -23,60 +24,131 @@ namespace Networking_Game.ClientServer
     {
         private Player localPlayer;
         private NetClient client;
+        bool activeGame = false;
 
         public GameClient() : base()
         {
-            // Create player
-            GetPlayerSettingsInput(out localPlayer);
-            // Request server ip from user
-            System.Console.WriteLine("Server IP: ");
-            string ip = ConsoleManager.GetPriorityInput();
-            // Connect to game
-            StartClient(ip);
-            // Send player
-            
-            // if player conflict, make new player
-            // Receive game information
-            // Send player
         }
 
-        private void StartClient(string ip, int port = Program.DefaultPort)
+        protected override void Initialize()
         {
+            StartClient();
+            base.Initialize();
+        }
+
+        private void StartClient()
+        {
+            IPAddress ip;
+            int port = Program.DefaultPort;
+            while (true)
+            {
+                // Request server ip and port from user
+                System.Console.WriteLine("Enter Server IP and port with format IP,port or leave blank to use local network discovery");
+                var input = ConsoleManager.GetPriorityInput().Split(',');
+
+                // connect to game
+                switch (input.Length)
+                {
+                    case 0:
+                        // use network discovery
+                        System.Console.WriteLine("Using local peer discovery");
+                        continue;
+                    case 1:
+                        // use IP and standard port
+                        if (IPAddress.TryParse(input[0], out ip)) break;
+                        port = Program.DefaultPort;
+                        System.Console.WriteLine($"Connecting to {ip} on port {port}");
+                        continue;
+                    case 2:
+                        // Use IP and port
+                        if (!IPAddress.TryParse(input[0], out ip)) continue;
+                        if (int.TryParse(input[1], out port)) break;
+                        System.Console.WriteLine($"Connecting to {ip} on port {port}");
+                        continue;
+                    default:
+                        System.Console.WriteLine("syntax error");
+                        continue;
+                }
+
+                break;
+            }
+
+
             NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId);
-            config.AutoFlushSendQueue = false;
+            config.EnableMessageType(NetIncomingMessageType.DiscoveryResponse);
             client = new NetClient(config);
             client.Start(); 
+            // Create player
+            var arrPlayer = ByteSerializer.ObjectToByteArray(Player.GetPlayerSettingsInput());
+            var om = client.CreateMessage(arrPlayer.Length);
+            om.Write(arrPlayer);
 
-            client.Connect(ip, port, CreateJoinGameMessage());
+            // Connect to server
+            if (ip != null)
+            {
+                // use ip
+                client.Connect(ip.ToString(), port, om);
+            }
+            else
+            {
+                // use discovery
+                client.DiscoverLocalPeers(port);
+            }
         }
 
-        public NetOutgoingMessage CreateJoinGameMessage()
+        protected override void Update(GameTime gameTime)
         {
-            NetOutgoingMessage message = client.CreateMessage();
-            message.WriteAllFields(localPlayer);
+            // Read message
+            CheckMessages();
 
-            return message;
+            base.Update(gameTime);
         }
 
-        public void SendMessage(string text)
+        private void CheckMessages()
         {
-            NetOutgoingMessage message = client.CreateMessage(text);
-            client.SendMessage(message, NetDeliveryMethod.ReliableOrdered);
-            client.FlushSendQueue();
+            NetIncomingMessage inMsg;
+            if ((inMsg = client.ReadMessage()) != null)
+            {
+                switch (inMsg.MessageType)
+                {
+                    case NetIncomingMessageType.Data:
+                        // handle custom messages
+                        break;
+                    case NetIncomingMessageType.DiscoveryResponse:
+                        //InGameMessage = ServerMessage.ReadString();
+                        //client.Connect(ServerMessage.SenderEndPoint);
+                        //InGameMessage = "Connected to " + ServerMessage.SenderEndPoint.Address.ToString();
+                        //if (thisPlayer == null)
+                        //{
+                        //    string ImageName = "Badges_" + Utility.NextRandom(0, Utility.PlayerTextures.Count - 1);
+                        //    thisPlayer = new GamePlayer(this, client, Guid.NewGuid(), ImageName,
+                        //                  new Vector2(Utility.NextRandom(100, GraphicsDevice.Viewport.Width - 100),
+                        //                               Utility.NextRandom(100, GraphicsDevice.Viewport.Height - 100)));
 
-        }
-    
+                        //}
 
-        private void SendClaimSquare()
-        {
-            NetOutgoingMessage message = client.CreateMessage();
-            client.SendMessage(message, NetDeliveryMethod.ReliableOrdered);
-            client.FlushSendQueue();
-        }
+                        break;
+                    case NetIncomingMessageType.StatusChanged:
+                        // handle connection status messages
+                        //switch (ServerMessage.SenderConnection.Status)
+                        //{
+                        //    /* .. */
+                        //}
+                        break;
 
-        public void Disconnect()
-        {
-            client.Disconnect("Bye");
+                    case NetIncomingMessageType.DebugMessage:
+                        // handle debug messages
+                        // (only received when compiled in DEBUG mode)
+                        //InGameMessage = ServerMessage.ReadString();
+                        break;
+
+                        /* .. */
+
+                        //InGameMessage = "unhandled message with type: "
+                        //    + ServerMessage.MessageType.ToString();
+                        break;
+                }
+            }
         }
     }
 }

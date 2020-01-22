@@ -1,23 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Net.Sockets;
 using System.Threading;
-using System.Threading.Tasks;
 using Lidgren.Network;
 using Tools_XNA_dotNET_Framework;
 
 namespace Networking_Game.ClientServer
 {
-    class PlayerConnection : NetPeer
+    public class PlayerConnection
     {
-        Player player;
+        public NetPeer peer;
+        public Player player;
 
-        public PlayerConnection()
+        public PlayerConnection(NetPeer peer, Player player)
         {
-
+            this.peer = peer;
+            this.player = player;
         }
     }
+
     /// <summary>
     /// The server for the client-server version of the game
     /// </summary>
@@ -26,25 +28,30 @@ namespace Networking_Game.ClientServer
         private NetServer server;
         private List<PlayerConnection> clients;
 
-        public void StartServer()
+        private GameType gameType;
+        private Grid grid;
+
+        public GameServer(GameType gameType, int gridSizeX, int gridSizeY, int port = Program.DefaultPort)
         {
-            NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId) { Port = Program.DefaultPort, EnableUPnP = true};
+            this.gameType = gameType;
+            grid = new Grid(gridSizeX, gridSizeY);
+            NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId) { Port = port, EnableUPnP = true };
+            StartServer(config);
+        }
+
+        public void StartServer(NetPeerConfiguration config)
+        {
             config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
             config.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
             config.EnableMessageType(NetIncomingMessageType.StatusChanged);
 
             server = new NetServer(config);
             server.Start();
+            server.UPnP.ForwardPort(Program.DefaultPort, Program.AppId);
 
             if (server.Status == NetPeerStatus.Running)
             {
                 Console.WriteLine("Server is running on port " + config.Port);
-                for (int i = 0; i < 5; i++)
-                {
-                    Console.WriteLine(server.UPnP.Status);
-                    Console.WriteLine(server.UPnP.ForwardPort(Program.DefaultPort, "ree"));
-                    Thread.Sleep(1500);
-                }
             }
             else
             {
@@ -54,10 +61,6 @@ namespace Networking_Game.ClientServer
             clients = new List<PlayerConnection>();
         }
 
-        private void SendGameInformation()
-        {
-            
-        }
 
         public void ReadMessages()
         {
@@ -82,12 +85,12 @@ namespace Networking_Game.ClientServer
                             Console.WriteLine(inMsg.SenderConnection.Status);
                             if (inMsg.SenderConnection.Status == NetConnectionStatus.Connected)
                             {
-                                clients.Add(inMsg.SenderConnection.Peer);
+                                PlayerConnect(new PlayerConnection(inMsg.SenderConnection.Peer, (Player)ByteSerializer.ByteArrayToObject(inMsg.Data)));
                                 Console.WriteLine("{0} has connected.", inMsg.SenderConnection.Peer.Configuration.LocalAddress);
                             }
                             if (inMsg.SenderConnection.Status == NetConnectionStatus.Disconnected)
                             {
-                                clients.Remove(inMsg.SenderConnection.Peer);
+                                PlayerDisconnect((from client in clients where client.peer == inMsg.SenderConnection.Peer select client).Single());
                                 Console.WriteLine("{0} has disconnected.", inMsg.SenderConnection.Peer.Configuration.LocalAddress);
                             }
                             break;
@@ -96,8 +99,10 @@ namespace Networking_Game.ClientServer
                             // Parse player data
                             Player newPlayer = (Player) ByteSerializer.ByteArrayToObject(inMsg.Data);
                             // Compare with existing players
-                            foreach (Player player in players)
+                            foreach (PlayerConnection client in clients)
                             {
+                                Player player = client.player;
+                                // If name or shape and color already is used
                                 if (string.Equals(newPlayer.Name, player.Name, StringComparison.CurrentCultureIgnoreCase)
                                     || (newPlayer.Shape == player.Shape && newPlayer.Color == player.Color))
                                 {
@@ -107,14 +112,10 @@ namespace Networking_Game.ClientServer
                             }
                             // If no match found, accept connection
                             inMsg.SenderConnection.Approve(); // TODO: send game data
-                            // Send player join data to other players
-                            NetOutgoingMessage outMsg = server.CreateMessage();
-                            outMsg.Data = inMsg.Data;
-                            server.SendToAll(outMsg, inMsg.SenderConnection, NetDeliveryMethod.ReliableOrdered, 1);
                             break;
 
                         case NetIncomingMessageType.DiscoveryRequest:
-                            
+                            server.SendDiscoveryResponse(server.CreateMessage($"{Program.AppId}"), inMsg.SenderEndPoint); // TODO: How to ident?
                             break;
 
                         default:
@@ -126,18 +127,34 @@ namespace Networking_Game.ClientServer
             }
         }
 
-        private void ReadConnectionAttempt(NetIncomingMessage message)
-        {
-            LoginCommand command = new LoginCommand();
-            command.Run(this, message);
-        }
-
         private void ReadData(NetIncomingMessage message)
         {
             // Read what type of packet was received
-            PacketType packetType = (PacketType) message.ReadByte();
+            PacketType packetType = (PacketType) message.ReadUInt16();
+            switch (packetType)
+            {
+                
+            }
+        }
 
-             
+        private void PlayerDisconnect(PlayerConnection client)
+        {
+            // Remove client from clients list
+            clients.Remove(client);
+            // Send PlayerDisconnect message to other players
+            NetOutgoingMessage outMsg = client.CreatePlayerDisconnectedMessage();
+            server.SendToAll(outMsg, client.peer.Connections.First(), NetDeliveryMethod.ReliableOrdered, 1);
+        }
+
+        private void PlayerConnect(PlayerConnection client)
+        {
+            // NOTE: At this point we assume the player have already been checked for duplications
+            // Add client to clients list
+            clients.Add(client);
+            // Send PlayerConnected message to other players
+            NetOutgoingMessage outMsg = client.CreatePlayerConnectedMessage();
+            server.SendToAll(outMsg, client.peer.Connections.First(), NetDeliveryMethod.ReliableOrdered, 1);
+
         }
     }
 }

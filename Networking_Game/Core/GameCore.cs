@@ -62,134 +62,9 @@ namespace Networking_Game
         protected override void Initialize()
         {
             // Create grid layout settings
-            gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
+            //gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
 
             base.Initialize();
-        }
-
-
-        /// <summary>
-        /// Gets input for a player
-        /// </summary>
-        /// <param name="player"></param>
-        protected void GetPlayerSettingsInput(out Player player)
-        {
-            // Get name TODO: refactor into while loop BUG: name should not be empty
-            N_INPUT:
-            Console.Write("Input name:  ", Color.White);
-            string name = ConsoleManager.GetPriorityInput();
-            const int maxNameLength = 12;
-            if (name.Length > maxNameLength)
-            {
-                Console.WriteLine($"That name is too long, max length is {maxNameLength}.", Color.Red);
-                goto N_INPUT;
-            }
-
-            // if there are other players
-            foreach (Player p in players)
-            {
-                // check their names so to not have duplicates
-                if (p?.Name == name)
-                {
-                    Console.WriteLine("That name is already in use, please pick another.", Color.Red);
-                    goto N_INPUT;
-                }
-            }
-
-            // Get shape TODO: refactor into while loop
-            S_INPUT:
-            // Write available shapes
-            Console.WriteLine("Available shapes: ", Color.White);
-            foreach (var s in Enum.GetNames(typeof(PlayerShape)))
-            {
-                Console.WriteLine(s, Color.White);
-            }
-            Console.Write("Input shape: ", Color.White);
-            string str = ConsoleManager.GetPriorityInput();
-            PlayerShape shape;
-            if (int.TryParse(str, out int shapeInt))
-            {
-                if (shapeInt < 1 || shapeInt > Enum.GetNames(typeof(PlayerShape)).Length)
-                {
-                    Console.WriteLine("incorrect input, try again.", Color.Red);
-                    goto S_INPUT;
-                }
-                shape = (PlayerShape)shapeInt-1;
-            }
-            else
-            {
-                if (!Enum.TryParse(str, true, out shape))
-                {
-                    Console.WriteLine("incorrect input, try again.", Color.Red);
-                    goto S_INPUT;
-                }
-            }
-
-            // Get color TODO: make example colors random TODO: refactor into while loop
-            C_INPUT:
-            Color[] exampleColors = new Color[] { Color.Red, Color.Blue, Color.Yellow, Color.Cyan, Color.PeachPuff, Color.White, };
-            Console.WriteLine("Example colors: ", Color.White);
-            foreach (Color exampleColor in exampleColors)
-            {
-                Console.Write(exampleColor.ToKnownColor() + " ", exampleColor);
-            }
-            Console.WriteLine();
-            Console.Write("Input color: ", Color.White);
-            if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out KnownColor color))
-            {
-                Console.WriteLine("incorrect input, try again.", Color.Red);
-                goto C_INPUT;
-            }
-            // TODO: check if the combination of color and shape is already in use 
-            Console.WriteLine($"Created player {name} using {color} {shape}.", Color.FromKnownColor(color));
-            player = new Player(name, shape, color);
-        }
-
-        protected void GetGameSettingsInput(out Point gridSize, out int maxPlayers) // TODO: Move to Core/ConsoleManager
-        {
-            X_INPUT:
-            Console.Write("Input grid size for the X axis: ", Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out int result))
-            {
-                Console.WriteLine("Input is not an integer, try again.", Color.Red);
-                goto X_INPUT;
-            }
-            if (result < 3 || result > 2048) // TODO: make max size based on screen resolution
-            {
-                Console.WriteLine("Input must be in range 3 to 2048", Color.Red);
-                goto X_INPUT;
-            }
-            gridSize.X = result;
-
-            Y_INPUT:
-            Console.Write("Input grid size for the Y axis: ", Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
-            {
-                Console.WriteLine("Input is not an integer, try again.", Color.Red);
-                goto Y_INPUT;
-            }
-            if (result < 3 || result > 2048)
-            {
-                Console.WriteLine("Input cannot be less than 3", Color.Red);
-                goto Y_INPUT;
-            }
-            gridSize.Y = result;
-
-            // Get max players
-            M_INPUT:
-            Console.Write("Input maximum amount of players: ", Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
-            {
-                Console.WriteLine("Input is not an integer, try again.", Color.Red);
-                goto M_INPUT;
-            }
-            if (result < 1 || result > Grid.MaxPlayers)
-            {
-                Console.WriteLine($"Input must be in range 1 to {Grid.MaxPlayers}", Color.Red);
-                goto M_INPUT;
-            }
-            maxPlayers = result;
-
         }
 
         #region Content
@@ -240,21 +115,6 @@ namespace Networking_Game
         /// <returns></returns>
         protected bool CheckGameEndCondition()
         {
-            switch (gameType)
-            {
-                case GameType.FillBoard:
-                    return CheckFillBoardCondition();
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        /// <summary>
-        /// Check if the condition for fill board condition is met and end game if true.
-        /// </summary>
-        /// <returns></returns>
-        private bool CheckFillBoardCondition()
-        {
             // Check if all GridSquares are filled (number of turns equals number of GridSquares)
             int maxTurns = grid.Squares.Length;
             return turnNumber <= maxTurns;
@@ -303,7 +163,7 @@ namespace Networking_Game
 
             // Draw grid
             spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera.GetViewMatrix());
-            grid.Draw(spriteBatch, gridLayout, camera);
+            grid?.Draw(spriteBatch, gridLayout, camera);
             spriteBatch.End();
             
 

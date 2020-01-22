@@ -273,5 +273,56 @@ namespace Networking_Game
                 }
             }
         }
+
+        public static Grid GetGameSettingsInput() // TODO: Move to Core/ConsoleManager
+        {
+            Point gridSize = new Point();
+            int maxPlayers;
+
+            X_INPUT:
+            Console.Write("Input grid size for the X axis: ", System.Drawing.Color.White);
+            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out int result))
+            {
+                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                goto X_INPUT;
+            }
+            if (result < 3 || result > 2048) // TODO: make max size based on screen resolution
+            {
+                Console.WriteLine("Input must be in range 3 to 2048", System.Drawing.Color.Red);
+                goto X_INPUT;
+            }
+            gridSize.X = result;
+
+            Y_INPUT:
+            Console.Write("Input grid size for the Y axis: ", System.Drawing.Color.White);
+            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
+            {
+                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                goto Y_INPUT;
+            }
+            if (result < 3 || result > 2048)
+            {
+                Console.WriteLine("Input cannot be less than 3", System.Drawing.Color.Red);
+                goto Y_INPUT;
+            }
+            gridSize.Y = result;
+
+            // Get max players
+            M_INPUT:
+            Console.Write("Input maximum amount of players: ", System.Drawing.Color.White);
+            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
+            {
+                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                goto M_INPUT;
+            }
+            if (result < 1 || result > Grid.MaxPlayers)
+            {
+                Console.WriteLine($"Input must be in range 1 to {Grid.MaxPlayers}", System.Drawing.Color.Red);
+                goto M_INPUT;
+            }
+            maxPlayers = result;
+
+            return new Grid(gridSize); // TODO: embed players into Grid
+        }
     }
 }
