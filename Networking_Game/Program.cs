@@ -25,8 +25,6 @@ namespace Networking_Game
     /// </summary>
     public static class Program
     {
-        public static Thread ConsoleThread;
-        public static ConsoleManager ConsoleManager;
         public static Thread GameThread;
         public static Game Game;
         public static GameServer Server;
@@ -50,7 +48,8 @@ namespace Networking_Game
         private static void Main()
         {
             // Start console
-            InitializeConsole();
+            ConsoleManager.Start();
+            ConsoleManager.Initialize();
 
             // Wait for console to get ready TODO: Actually check for when ConsoleManager is ready
             Thread.Sleep(1000);
@@ -97,23 +96,6 @@ namespace Networking_Game
             }
         }
 
-        private static void InitializeConsole()
-        {
-            // Create console
-            ConsoleManager = new ConsoleManager();
-
-            // Create console thread
-            ConsoleThread = new Thread(() =>
-            {
-                ConsoleManager.Initialize();
-                ConsoleManager.Run();
-            });
-
-            // Start console thread
-            ConsoleThread.Name = nameof(ConsoleManager);
-            ConsoleThread.Start();
-        }
-
         /// <summary>
         /// Starts the local game version
         /// </summary>
@@ -154,7 +136,7 @@ namespace Networking_Game
             {
                 //Server = new GameServer();
                 //Server.StartServer();
-                Server.ReadMessages();
+                Server.Run();
             });
 
             GameThread.Name = nameof(GameServer);
@@ -191,7 +173,7 @@ namespace Networking_Game
             string path = @"Networking_Game";
 
             // Start ApplicationRestartHelper process
-            Process.Start(@"ProcessRestartHelper", pid + " " + path);
+            Process.Start(@"ProcessRestartHelper", pid);
 
             Exit();
         }

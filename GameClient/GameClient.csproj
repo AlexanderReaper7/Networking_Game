@@ -60,6 +60,7 @@
     <ProjectReference Include="..\Networking_Game\Networking_Game.csproj">
       <Project>{e7a272ab-238b-4d36-af1d-2963d613c34e}</Project>
       <Name>Networking_Game</Name>
+      <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameLocal", "GameLocal\Game
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameClient", "GameClient\GameClient.csproj", "{420FD732-D4A0-4826-A52E-6BD119936F69}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServerHub", "ServerHub\ServerHub.csproj", "{AD6A5649-78DD-4EC5-A78B-B974E8137316}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,6 +80,14 @@ Global
 		{420FD732-D4A0-4826-A52E-6BD119936F69}.Release|Any CPU.Build.0 = Release|Any CPU
 		{420FD732-D4A0-4826-A52E-6BD119936F69}.Release|x86.ActiveCfg = Release|Any CPU
 		{420FD732-D4A0-4826-A52E-6BD119936F69}.Release|x86.Build.0 = Release|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Debug|x86.Build.0 = Debug|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Release|x86.ActiveCfg = Release|Any CPU
+		{AD6A5649-78DD-4EC5-A78B-B974E8137316}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

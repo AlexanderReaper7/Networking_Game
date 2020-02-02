@@ -15,71 +15,91 @@ namespace Networking_Game.ClientServer
     public enum PacketType : ushort
     {
         ClaimSquare,
+        FailedClaimSquare,
         EndGame,
         PlayerConnected,
-        PlayerDisconnected
+        PlayerDisconnected,
+        NextTurn,
+        GridData
     }
-
-    //public interface ICommand
-    //{
-    //    void Run(GameServer server, NetIncomingMessage message);
-    //}
-
-    //public class LoginCommand : ICommand
-    //{
-    //    public readonly string Name;
-    //    public readonly PlayerShape Shape;
-    //    public readonly Color Color;
-
-
-    //    public void Run(GameServer server, NetIncomingMessage message)
-    //    {
-            
-    //        // Parse data
-    //        message.WriteAllFields(typeof(Player));
-    //    }
-    //}
-
-    //public class ClaimSquareCommand : ICommand
-    //{
-    //    public void Run(GameServer server, NetIncomingMessage message)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-    //public class EndGameCommand : ICommand
-    //{
-    //    public void Run(GameServer server, NetIncomingMessage message)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
 
     public static class PacketFactory
     {
+        #region Write Extensions
 
         public static void Write(this NetOutgoingMessage message, PacketType paketType)
         {
             message.Write((ushort) paketType);
         }
+        
+        #endregion
 
-        public static NetOutgoingMessage CreatePlayerConnectedMessage(this PlayerConnection connection)
+        public static NetOutgoingMessage CreatePlayerConnectedMessage(this PlayerConnection client, NetPeer sender)
         {
-            NetOutgoingMessage output = connection.peer.CreateMessage();
+            NetOutgoingMessage output = sender.CreateMessage();
             output.Write(PacketType.PlayerConnected);
-            output.Write(ByteSerializer.ObjectToByteArray(connection.player));
+            output.Write(ByteSerializer.ObjectToByteArray(client.player));
             return output;
         }
 
-        public static NetOutgoingMessage CreatePlayerDisconnectedMessage(this PlayerConnection connection)
+        public static NetOutgoingMessage CreatePlayerDisconnectedMessage(this PlayerConnection client, NetPeer sender)
         {
-            NetOutgoingMessage output = connection.peer.CreateMessage();
+            NetOutgoingMessage output = sender.CreateMessage();
             output.Write(PacketType.PlayerDisconnected);
-            output.Write(ByteSerializer.ObjectToByteArray(connection.player));
+            output.Write(ByteSerializer.ObjectToByteArray(client.player));
             return output;
         }
 
+        public static NetOutgoingMessage CreateNextTurnMessage(this PlayerConnection client, NetPeer sender)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.NextTurn);
+            output.Write(client.player.Name);
+            return output;
+        }
+
+        public static NetOutgoingMessage CreateClaimSquareMessage(this Player player, NetPeer sender, int x, int y)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.ClaimSquare);
+            output.Write(player.Name);
+            output.Write(x);
+            output.Write(y);
+            return output;
+        }
+
+        public static NetOutgoingMessage CreateClaimSquareMessage(this NetClient client, int x, int y)
+        {
+            NetOutgoingMessage output = client.CreateMessage();
+            output.Write(PacketType.ClaimSquare);
+            output.Write(x);
+            output.Write(y);
+            return output;
+        }
+
+        public static NetOutgoingMessage CreateFailedClaimSquareMessage(NetPeer sender, string reason)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.FailedClaimSquare);
+            output.Write(reason);
+            return output;
+        }
+
+
+        public static NetOutgoingMessage CreateGridDataMessage(this Grid grid, NetPeer sender)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.GridData);
+            output.Write(ByteSerializer.ObjectToByteArray(grid));
+            return output;
+        }
+        
+        public static NetOutgoingMessage CreateEndGameMessage(NetPeer sender)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.EndGame);
+            //output.Write(ByteSerializer.ObjectToByteArray(players));
+            return output;
+        }
     }
 }

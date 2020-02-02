@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -13,17 +14,12 @@ using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace Networking_Game
 {
-    public enum GameType
-    {
-        FillBoard
-    }
 
     /// <summary>
     /// The core of the game
     /// </summary>
     public class GameCore : Game
     {
-
         protected GraphicsDeviceManager graphics;
         protected SpriteBatch spriteBatch;
 
@@ -31,16 +27,15 @@ namespace Networking_Game
         public Grid grid;
         public Camera2D camera;
         protected Rectangle playArea;
-        protected Player[] players;
+        protected List<Player> players = new List<Player>();
 
-        protected GameType gameType;
         protected int turnNumber;
-        protected bool newTurn;
         protected int activePlayerIndex;
         protected Player ActivePlayer => players[activePlayerIndex];
 
         public GameCore()
         {
+            ConsoleManager.Start();
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             // Set to borderless window
@@ -62,7 +57,7 @@ namespace Networking_Game
         protected override void Initialize()
         {
             // Create grid layout settings
-            //gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
+            gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
 
             base.Initialize();
         }
@@ -104,10 +99,42 @@ namespace Networking_Game
         /// </summary>
         protected void NextPlayer()
         {
-            activePlayerIndex = (activePlayerIndex + 1) % players.Length;
-            newTurn = true;
+            activePlayerIndex = (activePlayerIndex + 1) % players.Count;
             turnNumber++;
         }
+
+        protected void ConfigureCamera()
+        {
+            camera = new Camera2D(this) { Origin = Vector2.Zero };
+            playArea = gridLayout.CalculatePlayArea(grid.sizeX, grid.sizeY);
+
+            // Get screen size
+            Point screenSize = new Point(graphics.GraphicsDevice.DisplayMode.Width, graphics.GraphicsDevice.DisplayMode.Height);
+
+            // Set initial window size
+            Point maxWindowSize = screenSize.X > screenSize.Y ? new Point(screenSize.Y) : new Point(screenSize.X); //TODO: what is this?
+            graphics.PreferredBackBufferWidth = screenSize.X - ConsoleManager.ConsoleWindow.Right - 8;
+            graphics.PreferredBackBufferHeight = screenSize.Y;
+            graphics.ApplyChanges();
+
+            // Zoom 
+            if (playArea.Width > playArea.Height) camera.ZoomToMatchWidth(playArea);
+            else camera.ZoomToMatchHeight(playArea);
+            // Crop window to be size of grid
+            Vector2 transform = Vector2.Transform(new Vector2(playArea.Right, playArea.Bottom), camera.GetViewMatrix());
+            graphics.PreferredBackBufferWidth = (int)Math.Round(transform.X);
+            graphics.PreferredBackBufferHeight = (int)Math.Round(transform.Y);
+            graphics.ApplyChanges();
+
+            // Move window next to console
+            //Window.Position = new Point(ConsoleManager.ConsoleWindow.Right -8, 0);
+            // Move window to the center
+            //Window.Position = new Point((width /2) - (windowSize /2), (height / 2) - (windowSize / 2));
+            // Move window to the upper right corner
+            // BUG: window moves to bottom and not top
+            Window.Position = new Point(screenSize.X - graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight - screenSize.Y);
+        }
+
 
         /// <summary>
         /// Check if the condition to end the game is fulfilled 
@@ -116,8 +143,7 @@ namespace Networking_Game
         protected bool CheckGameEndCondition()
         {
             // Check if all GridSquares are filled (number of turns equals number of GridSquares)
-            int maxTurns = grid.Squares.Length;
-            return turnNumber <= maxTurns;
+            return turnNumber <= grid.Squares.Length;
         }
 
         protected void EndGame()
@@ -126,30 +152,32 @@ namespace Networking_Game
             Console.WriteLine("\n\n Game End \n", Color.White); // TODO: use fancy gradient
 
             // Sort players by descending score
-            List<Tuple<int, string, Color>> entries = new List<Tuple<int, string, Color>>(players.Length);
-            foreach (Player player in players)
-            {
-                entries.Add(new Tuple<int, string, Color>(player.Score, player.Name, Color.FromKnownColor(player.Color)));
-            }
-            entries = entries.OrderByDescending(t => t.Item1).ToList();
 
+            var sortedPlayers = (from player in players orderby player.Score descending select player).ToArray();
             // Check for winners (multiple in case of tie)
-            int winners = 1;
-            while (entries[winners - 1].Item1 == entries[winners]?.Item1)
-            {
-                winners++;
-                if (winners == entries.Count) break;
-            }
+            var winners = (from winner in sortedPlayers 
+                where winner.Score == sortedPlayers[0].Score 
+                where winner.Score > 0 
+                select winner).ToArray();
 
-            // Write winner TODO: write other end states, no winner (everyone got 0), tie
-            for (int i = 0; i < winners; i++)
+            // No winner
+            if (winners.Length < 1)
             {
-                Console.WriteLine($"    Winner : {entries[i].Item2} with {entries[i].Item1} points \n", entries[i].Item3);
+                // TODO: write other end states like, no winner (everyone got 0), tie
             }
-            // Write Player scores
-            for (int i = winners; i < entries.Count; i++)
+            else // Write winner 
+                foreach (Player winner in winners)
+                {
+                    Console.WriteLine($" Winner : {winner.Name} with {winner.Score} points", winner.Color);
+                }
+
+            // Write empty line for spacing between winners and everyone
+            Console.WriteLine();
+
+            // Write all Player scores
+            foreach (Player player in sortedPlayers)
             {
-                Console.WriteLine($"{entries[i].Item2} : {entries[i].Item1}", entries[i].Item3);
+                Console.WriteLine($"{player.Name} : {player.Score}", player.Color);
             }
         }
 
@@ -161,10 +189,13 @@ namespace Networking_Game
         {
             GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Black);
 
-            // Draw grid
-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera.GetViewMatrix());
-            grid?.Draw(spriteBatch, gridLayout, camera);
-            spriteBatch.End();
+            if (grid != null)
+            {
+                // Draw grid
+                spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera?.GetViewMatrix());
+                grid.Draw(spriteBatch, gridLayout, camera);
+                spriteBatch.End();
+            }
             
 
             base.Draw(gameTime);

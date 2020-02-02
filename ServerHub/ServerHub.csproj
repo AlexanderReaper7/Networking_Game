@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3E65076E-09EF-4F08-9D21-6F2FD953896F}</ProjectGuid>
+    <ProjectGuid>{AD6A5649-78DD-4EC5-A78B-B974E8137316}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>GameServer</RootNamespace>
-    <AssemblyName>GameServer</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <RootNamespace>ServerHub</RootNamespace>
+    <AssemblyName>ServerHub</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
@@ -33,16 +33,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <StartupObject>GameServer.Program</StartupObject>
+    <StartupObject>ServerHub.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Lidgren.Network, Version=3.7.1.189, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\..\Program Files (x86)\MonoGame\v3.0\Assemblies\Windows\Lidgren.Network.dll</HintPath>
-    </Reference>
-    <Reference Include="MonoGame.Framework, Version=3.7.1.189, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\Program Files (x86)\MonoGame\v3.0\Assemblies\Windows\MonoGame.Framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -61,11 +57,13 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Alexander_Tools\Tools_XNA_dotNET_Framework\Tools_XNA_dotNET_Framework\Tools_XNA_dotNET_Framework.csproj">
+      <Project>{268b980e-2c5d-4f8f-a578-18ffdf6fb1be}</Project>
+      <Name>Tools_XNA_dotNET_Framework</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Networking_Game\Networking_Game.csproj">
       <Project>{e7a272ab-238b-4d36-af1d-2963d613c34e}</Project>
       <Name>Networking_Game</Name>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-      <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

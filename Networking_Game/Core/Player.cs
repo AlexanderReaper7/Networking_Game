@@ -26,6 +26,7 @@ namespace Networking_Game
     /// <summary>
     /// Contains drawing methods for the different player shapes
     /// </summary>
+    [Serializable]
     public class Player
     {
         public string Name { get; private set; }
@@ -33,15 +34,12 @@ namespace Networking_Game
         public KnownColor Color // TODO: change valid colors so you can always see the color and there´s no similar ones.
         {
             get =>  knownColor;
-            private set { 
-                color = System.Drawing.Color.FromKnownColor(value).ToXNAColor();
-                knownColor = value;
-            }
+            private set => knownColor = value;
         }
 
         public int Score { get; set; }
 
-        private Color color;
+        private Color color => System.Drawing.Color.FromKnownColor(knownColor).ToXNAColor();
         private KnownColor knownColor;
 
         public Player(string name, PlayerShape shape, KnownColor color)
@@ -66,12 +64,12 @@ namespace Networking_Game
                     float x1, x2, y1, y2;
                     x1 = position.X + gridLayout.LineThickness * 2;
                     x2 = position.X + gridLayout.SquareSize - gridLayout.LineThickness *2;
-                    y1 = position.Y + gridLayout.LineThickness * 2;
+                    y1 = position.Y + gridLayout.LineThickness * 2.5f;
                     y2 = position.Y + gridLayout.SquareSize - gridLayout.LineThickness *2;
                     spriteBatch.DrawLine(x1, y1, x2, y2, color);
                     spriteBatch.DrawLine(x2, y1 + gridLayout.LineThickness/2, x1, y2 + gridLayout.LineThickness/2, color);
                     break;
-
+                    
                 case PlayerShape.Rectangle:
                     spriteBatch.DrawRectangle(position + new Vector2(gridLayout.LineThickness, gridLayout.LineThickness * 2), new Vector2(gridLayout.SquareSize - (gridLayout.LineThickness * 4)), color);
                     break;
@@ -95,62 +93,82 @@ namespace Networking_Game
         /// <param name="player"></param>
         public static Player GetPlayerSettingsInput()
         {
-            // Get name TODO: refactor into while loop BUG: name should not be empty
-            N_INPUT:
-            Colorful.Console.Write("Input name:  ", System.Drawing.Color.White);
-            string name = ConsoleManager.GetPriorityInput();
+            // Get name
+            string name = null;
             const int maxNameLength = 12;
-            if (name.Length > maxNameLength)
+            while (true)
             {
-                Colorful.Console.WriteLine($"That name is too long, max length is {maxNameLength}.", System.Drawing.Color.Red);
-                goto N_INPUT;
+                Console.Write($"Input name:  ", System.Drawing.Color.White);
+                name = ConsoleManager.GetPriorityInput();
+                if (name.Length > maxNameLength)
+                {
+                    Console.WriteLine($"That name is too long, max length is {maxNameLength}", System.Drawing.Color.Red);
+                    continue;
+                }
+
+                if (name.Length < 1)
+                {
+                    Console.WriteLine("Name can not be empty", System.Drawing.Color.Red);
+                    continue;
+                }
+
+                if (name == "empty") System.Console.WriteLine("i guess it can be empty..."); 
+                break;
             }
 
-            // Get shape TODO: refactor into while loop
-            S_INPUT:
-            // Write available shapes
-            Colorful.Console.WriteLine("Available shapes: ", System.Drawing.Color.White);
-            foreach (var s in Enum.GetNames(typeof(PlayerShape)))
-            {
-                Colorful.Console.WriteLine(s, System.Drawing.Color.White);
-            }
-            Colorful.Console.Write("Input shape: ", System.Drawing.Color.White);
-            string str = ConsoleManager.GetPriorityInput();
+            // Get shape 
             PlayerShape shape;
-            if (int.TryParse(str, out int shapeInt))
+            while (true)
             {
-                if (shapeInt < 1 || shapeInt > Enum.GetNames(typeof(PlayerShape)).Length)
+                // Write available shapes
+                Console.WriteLine("Available shapes: ", System.Drawing.Color.White);
+                foreach (var s in Enum.GetNames(typeof(PlayerShape)))
                 {
-                    Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
-                    goto S_INPUT;
+                    Console.WriteLine(s, System.Drawing.Color.White);
                 }
-                shape = (PlayerShape)shapeInt - 1;
-            }
-            else
-            {
-                if (!Enum.TryParse(str, true, out shape))
+                Console.Write("Input shape: ", System.Drawing.Color.White);
+                string str = ConsoleManager.GetPriorityInput();
+                if (int.TryParse(str, out int shapeInt))
                 {
-                    Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
-                    goto S_INPUT;
+                    if (shapeInt < 1 || shapeInt > Enum.GetNames(typeof(PlayerShape)).Length) // TODO: Separate 
+                    {
+                        Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                        continue;
+                    }
+                    shape = (PlayerShape)shapeInt - 1;
                 }
+                else
+                {
+                    if (!Enum.TryParse(str, true, out shape))
+                    {
+                        Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                        continue;
+                    }
+                }
+                break;
+                
             }
 
-            // Get color TODO: make example colors random TODO: refactor into while loop
-            C_INPUT:
-            System.Drawing.Color[] exampleColors = new System.Drawing.Color[] { System.Drawing.Color.Red, System.Drawing.Color.Blue, System.Drawing.Color.Yellow, System.Drawing.Color.Cyan, System.Drawing.Color.PeachPuff, System.Drawing.Color.White, };
-            Colorful.Console.WriteLine("Example colors: ", System.Drawing.Color.White);
-            foreach (System.Drawing.Color exampleColor in exampleColors)
+            // Get color TODO: make example colors random
+            KnownColor color;
+            while (true)
             {
-                Colorful.Console.Write(exampleColor.ToKnownColor() + " ", exampleColor);
+                System.Drawing.Color[] exampleColors = new System.Drawing.Color[] { System.Drawing.Color.Red, System.Drawing.Color.Blue, System.Drawing.Color.Yellow, System.Drawing.Color.Cyan, System.Drawing.Color.PeachPuff, System.Drawing.Color.White, };
+                Console.WriteLine("Example colors: ", System.Drawing.Color.White);
+                foreach (System.Drawing.Color exampleColor in exampleColors)
+                {
+                    Console.Write(exampleColor.ToKnownColor() + " ", exampleColor);
+                }
+                Console.WriteLine();
+                Console.Write("Input color: ", System.Drawing.Color.White);
+                if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out color))
+                {
+                    Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
+                    continue;
+                }
+                break;
             }
-            Colorful.Console.WriteLine();
-            Colorful.Console.Write("Input color: ", System.Drawing.Color.White);
-            if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out KnownColor color))
-            {
-                Colorful.Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
-                goto C_INPUT;
-            }
-            // TODO: check if the combination of color and shape is already in use 
+
             Console.WriteLine($"Created player {name} using {color} {shape}.", System.Drawing.Color.FromKnownColor(color));
             return new Player(name, shape, color);
         }

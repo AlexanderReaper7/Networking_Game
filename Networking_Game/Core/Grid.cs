@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
 using Tools_XNA_dotNET_Framework;
 using Color = Microsoft.Xna.Framework.Color;
 using Console = Colorful.Console;
@@ -16,6 +16,7 @@ namespace Networking_Game
     /// <summary>
     /// The data structure for a space in the game grid.
     /// </summary>
+    [Serializable]
     public struct GridSquare
     {
         public Player Owner;
@@ -53,6 +54,7 @@ namespace Networking_Game
     /// <summary>
     /// Contains data for the visual components for grid
     /// </summary>
+    [Serializable]
     public struct GridLayout
     {
         public float SquareSize { get; }
@@ -83,27 +85,40 @@ namespace Networking_Game
     /// <summary>
     /// 
     /// </summary>
+    [Serializable]
     public class Grid
     {
         public static readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
 
         private GridSquare[,] squares;
 
-        private readonly int sizeX;
-        private readonly int sizeY;
+        public readonly int sizeX;
+        public readonly int sizeY;
+        public readonly int? minPlayers; // TODO: Implement minPlayers
+        public readonly int maxPlayers;
         private const int minLineLength = 3;
 
         public GridSquare[,] Squares => squares;
 
-        public Grid(Point gridSize) : this(gridSize.X, gridSize.Y) { }
-
-        public Grid(int sizeX, int sizeY)
+        public Grid(int sizeX, int sizeY, int maxPlayers, int minPlayers)
         {
-            if (sizeX < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeX), "Must be greater than 2");// TODO: fix error message
-            if (sizeY < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeY), "Must be greater than 2");
+            this.sizeX = sizeX;
+            this.sizeY = sizeY;
+            this.maxPlayers = maxPlayers;
+            this.minPlayers = minPlayers;
+        }
+
+        public Grid(Point gridSize, int maxPlayers) : this(gridSize.X, gridSize.Y, maxPlayers) { }
+
+        public Grid(int sizeX, int sizeY, int maxPlayers)
+        {
+            if (sizeX < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeX), $"Must be greater than {minLineLength}");// TODO: fix error message
+            if (sizeY < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeY), $"Must be greater than {minLineLength}");
+            if (maxPlayers > MaxPlayers || maxPlayers < 2) throw new ArgumentOutOfRangeException(nameof(maxPlayers), $"Must be greater than 1 and less than {MaxPlayers}");
 
             this.sizeX = sizeX;
             this.sizeY = sizeY;
+            this.maxPlayers = maxPlayers; 
 
             squares = new GridSquare[sizeX,sizeY];
             for (int x = 0; x < squares.GetLength(0); x++)
@@ -137,7 +152,6 @@ namespace Networking_Game
                     player.Score += newlyLinedPoints.Count * newlyLinedPoints.Count;
                     return true;
                 }
-
                 return false;
             }
             catch (IndexOutOfRangeException)
@@ -276,53 +290,65 @@ namespace Networking_Game
 
         public static Grid GetGameSettingsInput() // TODO: Move to Core/ConsoleManager
         {
-            Point gridSize = new Point();
+            // TODO: add min players?
             int maxPlayers;
+            int gridSizeX;
+            int gridSizeY;
 
-            X_INPUT:
-            Console.Write("Input grid size for the X axis: ", System.Drawing.Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out int result))
+            // Get grid size X
+            while (true)
             {
-                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
-                goto X_INPUT;
+                var input = ConsoleManager.WaitGetPriorityInput("Input grid size for the X axis: ");
+                if (!int.TryParse(input, out int result))
+                {
+                    Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                    continue;
+                }
+                if (result < minLineLength || result > 2048) // TODO: make max size based on screen resolution
+                {
+                    Console.WriteLine($"Input must be in range {minLineLength} to 2048", System.Drawing.Color.Red);
+                    continue;
+                }
+                gridSizeX = result;
+                break;
             }
-            if (result < 3 || result > 2048) // TODO: make max size based on screen resolution
-            {
-                Console.WriteLine("Input must be in range 3 to 2048", System.Drawing.Color.Red);
-                goto X_INPUT;
-            }
-            gridSize.X = result;
 
-            Y_INPUT:
-            Console.Write("Input grid size for the Y axis: ", System.Drawing.Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
+            // Get grid size Y
+            while (true)
             {
-                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
-                goto Y_INPUT;
+                var input = ConsoleManager.WaitGetPriorityInput("Input grid size for the Y axis: ");
+                if (!int.TryParse(input, out int result))
+                {
+                    Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                    continue;
+                }
+                if (result < minLineLength || result > 2048) // TODO: make max size based on screen resolution
+                {
+                    Console.WriteLine($"Input must be in range {minLineLength} to 2048", System.Drawing.Color.Red);
+                    continue;
+                }
+                gridSizeY = result;
+                break;
             }
-            if (result < 3 || result > 2048)
-            {
-                Console.WriteLine("Input cannot be less than 3", System.Drawing.Color.Red);
-                goto Y_INPUT;
-            }
-            gridSize.Y = result;
 
-            // Get max players
-            M_INPUT:
-            Console.Write("Input maximum amount of players: ", System.Drawing.Color.White);
-            if (!int.TryParse(ConsoleManager.GetPriorityInput(), out result))
+            // Get max players TODO: move max and min players out of Grid
+            while (true)
             {
-                Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
-                goto M_INPUT;
+                var input = ConsoleManager.WaitGetPriorityInput("Input maximum amount of players: ");
+                if (!int.TryParse(input, out int result))
+                {
+                    Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                    continue;
+                }
+                if (result < 1 || result > Grid.MaxPlayers)
+                {
+                    Console.WriteLine($"Input must be in range 1 to {MaxPlayers}", System.Drawing.Color.Red);
+                    continue;
+                }
+                maxPlayers = result;
+                break;
             }
-            if (result < 1 || result > Grid.MaxPlayers)
-            {
-                Console.WriteLine($"Input must be in range 1 to {Grid.MaxPlayers}", System.Drawing.Color.Red);
-                goto M_INPUT;
-            }
-            maxPlayers = result;
-
-            return new Grid(gridSize); // TODO: embed players into Grid
+            return new Grid(gridSizeX, gridSizeY, maxPlayers); 
         }
     }
 }
