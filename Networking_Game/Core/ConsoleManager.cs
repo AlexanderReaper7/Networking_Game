@@ -133,7 +133,7 @@ namespace Networking_Game
             SetWindowPosition(-8, -1,  MathHelper.Clamp((ScreenSize.X) / 3, 700, 1000) , ScreenSize.Y +8);
         }
 
-        public static bool IsPriorityInput = false; // TODO: Create a waiting line instead
+        public static bool IsPriorityInput = false; // TODO: Create a waiting que instead
         private static string priorityInput = null;
 
         /// <summary>

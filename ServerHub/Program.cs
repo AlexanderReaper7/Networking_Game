@@ -14,7 +14,7 @@ namespace ServerHub
     {
         static List<Process> servers = new List<Process>();
 
-        enum Command
+        private enum Command
         {
             EXIT,
             START,
@@ -22,7 +22,7 @@ namespace ServerHub
             SERVER
         }
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
 
 
@@ -49,7 +49,7 @@ namespace ServerHub
                                 break;
 
                             case Command.START:
-                                GameServerArguments StartServerArg = GameServerArguments.CreateFromConsoleInput();
+                                GameServerArgument StartServerArg = GameServerArgument.CreateFromConsoleInput();
                                 Process newServer = Process.Start(Process.GetCurrentProcess().MainModule.FileName, StartServerArg.ToString());
                                 servers.Add(newServer);
                                 Console.WriteLine($"Started New server with ID:{newServer.Id}");
@@ -60,7 +60,7 @@ namespace ServerHub
                                 {
                                     int instanceId = int.Parse(input[i++]);
                                     Process instance = servers.Find(f => f.Id == instanceId);
-                                    instance.Close(); // TODO: is this correct? use .Kill() instead?
+                                    instance.Close(); // Q: is this correct? use .Kill() instead?
                                     if (servers.Remove(instance)) Console.WriteLine($"Server {instanceId} stopped");
                                     else Console.WriteLine("failed to remove server from instances");
                                 }

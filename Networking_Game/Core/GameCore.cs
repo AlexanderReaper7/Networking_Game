@@ -33,6 +33,8 @@ namespace Networking_Game
         protected int activePlayerIndex;
         protected Player ActivePlayer => players[activePlayerIndex];
 
+        public Action action;
+
         public GameCore()
         {
             ConsoleManager.Start();
@@ -58,7 +60,6 @@ namespace Networking_Game
         {
             // Create grid layout settings
             gridLayout = new GridLayout(20, new Vector2(1,0), 1f, Microsoft.Xna.Framework.Color.White, new Microsoft.Xna.Framework.Color(Microsoft.Xna.Framework.Color.White, 55));
-
             base.Initialize();
         }
 
@@ -91,6 +92,14 @@ namespace Networking_Game
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Run action
+            while (action != null)
+            {
+                var a = action;
+                action.Invoke();
+                action -= a;
+            }
+
             base.Update(gameTime);
         }
 
@@ -112,11 +121,10 @@ namespace Networking_Game
             Point screenSize = new Point(graphics.GraphicsDevice.DisplayMode.Width, graphics.GraphicsDevice.DisplayMode.Height);
 
             // Set initial window size
-            Point maxWindowSize = screenSize.X > screenSize.Y ? new Point(screenSize.Y) : new Point(screenSize.X); //TODO: what is this?
             graphics.PreferredBackBufferWidth = screenSize.X - ConsoleManager.ConsoleWindow.Right - 8;
             graphics.PreferredBackBufferHeight = screenSize.Y;
             graphics.ApplyChanges();
-
+            
             // Zoom 
             if (playArea.Width > playArea.Height) camera.ZoomToMatchWidth(playArea);
             else camera.ZoomToMatchHeight(playArea);
@@ -131,7 +139,6 @@ namespace Networking_Game
             // Move window to the center
             //Window.Position = new Point((width /2) - (windowSize /2), (height / 2) - (windowSize / 2));
             // Move window to the upper right corner
-            // BUG: window moves to bottom and not top
             Window.Position = new Point(screenSize.X - graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight - screenSize.Y);
         }
 
@@ -165,11 +172,10 @@ namespace Networking_Game
             {
                 // TODO: write other end states like, no winner (everyone got 0), tie
             }
-            else // Write winner 
-                foreach (Player winner in winners)
-                {
-                    Console.WriteLine($" Winner : {winner.Name} with {winner.Score} points", winner.Color);
-                }
+            else foreach (Player winner in winners)// Write winner 
+            {
+                Console.WriteLine($" Winner : {winner.Name} with {winner.Score} points", winner.Color);
+            }
 
             // Write empty line for spacing between winners and everyone
             Console.WriteLine();
@@ -189,10 +195,10 @@ namespace Networking_Game
         {
             GraphicsDevice.Clear(Microsoft.Xna.Framework.Color.Black);
 
-            if (grid != null)
+            if (grid != null && camera != null)
             {
                 // Draw grid
-                spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera?.GetViewMatrix());
+                spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, null, null, camera.GetViewMatrix());
                 grid.Draw(spriteBatch, gridLayout, camera);
                 spriteBatch.End();
             }

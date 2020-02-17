@@ -16,11 +16,12 @@ namespace Networking_Game.ClientServer
     {
         ClaimSquare,
         FailedClaimSquare,
+        StartGame,
         EndGame,
         PlayerConnected,
         PlayerDisconnected,
         NextTurn,
-        GridData
+        GridData,
     }
 
     public static class PacketFactory
@@ -93,12 +94,18 @@ namespace Networking_Game.ClientServer
             output.Write(ByteSerializer.ObjectToByteArray(grid));
             return output;
         }
-        
+
+        public static NetOutgoingMessage CreateStartGameMessage(NetPeer sender)
+        {
+            NetOutgoingMessage output = sender.CreateMessage();
+            output.Write(PacketType.StartGame);
+            return output;
+        }
+
         public static NetOutgoingMessage CreateEndGameMessage(NetPeer sender)
         {
             NetOutgoingMessage output = sender.CreateMessage();
             output.Write(PacketType.EndGame);
-            //output.Write(ByteSerializer.ObjectToByteArray(players));
             return output;
         }
     }

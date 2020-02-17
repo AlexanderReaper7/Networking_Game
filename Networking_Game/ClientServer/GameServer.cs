@@ -27,21 +27,20 @@ namespace Networking_Game.ClientServer
     public class GameServer
     {
         private NetServer server;
-        private GameServerArguments arguments;
+        private GameServerArgument argument;
         private List<PlayerConnection> clients;
-
         private int playerTurnIndex;
         private Grid grid;
 
         public bool Running { get; private set; }
 
         /// <summary>
-        /// Create a new GameServer from arguments
+        /// Create a new GameServer from argument
         /// </summary>
-        public GameServer(GameServerArguments args)
+        public GameServer(GameServerArgument args)
         {
             grid = new Grid(args.sizeX, args.sizeY, args.maxPlayers, args.minPlayers);
-            arguments = args;
+            argument = args;
 
             NetPeerConfiguration config = new NetPeerConfiguration(Program.AppId);
             config.Port = args.port;
@@ -89,7 +88,7 @@ namespace Networking_Game.ClientServer
         public void StopServer()
         {
             Running = false;
-            server.Shutdown("Bye message"); // TODO: change bye message for shutdown?
+            server.Shutdown("Bye message"); // Q: change bye message for shutdown?
         }
 
         public void Run()
@@ -98,7 +97,7 @@ namespace Networking_Game.ClientServer
             Console.WriteLine("Starting network loop");
             while (Running)
             {
-                server.MessageReceivedEvent.WaitOne();
+                server.MessageReceivedEvent.WaitOne(); // Q: should we wait every loop or only the first?
                 NetIncomingMessage inMsg;
                 while ((inMsg = server.ReadMessage()) != null)
                 {
@@ -121,14 +120,20 @@ namespace Networking_Game.ClientServer
                                     PlayerConnection c = GetPlayerConnection(inMsg.SenderConnection);
                                     Console.WriteLine($"{c.player.Name} has connected from {c.connection.RemoteEndPoint}.");
                                     SendGameData(c);
+                                    // Check if there are enough players to start the game
+                                    if (clients.Count >= grid.minPlayers)
+                                    {
+                                        // TODO: start voting to start game
+                                        // Start game
+                                        server.SendToAll(PacketFactory.CreateStartGameMessage(server), NetDeliveryMethod.ReliableOrdered);
+                                    }
                                     break;
                                 case NetConnectionStatus.Disconnected:
-                                    // TODO: mimic connected
-                                    PlayerDisconnect((from client in clients where client.connection == inMsg.SenderConnection select client).Single());
-                                    Console.WriteLine($"{inMsg.SenderConnection.Peer.Configuration.LocalAddress} has disconnected.");
+                                    PlayerConnection pc = GetPlayerConnection(inMsg.SenderConnection);
+                                    Console.WriteLine($"{pc.player.Name} has disconnected.");
+                                    PlayerDisconnect(pc);
                                     break;
                             }
-
                             break;
 
                         case NetIncomingMessageType.ConnectionApproval:
@@ -137,7 +142,18 @@ namespace Networking_Game.ClientServer
                                 .Count() != 0)
                             {
                                 // If there is an existing connection, reject connection
-                                inMsg.SenderConnection.Deny("Connection already exists");
+                                string reason = "Connection already exists";
+                                Console.WriteLine($"Player failed to connect: {reason}");
+                                inMsg.SenderConnection.Deny(reason);
+                                break;
+                            }
+
+                            // Check max players
+                            if (clients.Count < grid.maxPlayers == false)
+                            {
+                                string reason = "Max players reached";
+                                Console.WriteLine($"Player failed to connect: {reason}");
+                                inMsg.SenderConnection.Deny(reason);
                                 break;
                             }
 
@@ -147,13 +163,15 @@ namespace Networking_Game.ClientServer
                             // Compare with existing players
                             // If name or shape and color already is used
                             if ((from client in clients
-                                    where string.Equals(newPlayer.Name, client.player.Name, StringComparison.CurrentCultureIgnoreCase)
+                                    where string.Equals(newPlayer.Name, client.player.Name, StringComparison.CurrentCultureIgnoreCase) //TODO: refactor into two where
                                           || (newPlayer.Shape == client.player.Shape && newPlayer.Color == client.player.Color)
                                     select client)
                                 .Count() != 0)
                             {
                                 // If there is a match, reject connection
-                                inMsg.SenderConnection.Deny("Player already exists");
+                                string reason = "Player already exists";
+                                Console.WriteLine($"Player failed to connect: {reason}");
+                                inMsg.SenderConnection.Deny(reason);
                                 break;
                             }
 
@@ -163,13 +181,16 @@ namespace Networking_Game.ClientServer
                             // Send game data
                             break;
 
-                        case NetIncomingMessageType.DiscoveryRequest:
+                        case NetIncomingMessageType.DiscoveryRequest: // TODO: send found server data
                             Console.WriteLine("Discovery Request from Client");
-                            server.SendDiscoveryResponse(server.CreateMessage($"{Program.AppId}"), inMsg.SenderEndPoint); // TODO: How to ident?
+                            var outMsg = server.CreateMessage();
+                            var v = new FoundServer(grid.sizeX, grid.sizeY, grid.maxPlayers, grid.minPlayers, clients.Count);
+                            outMsg.Write(ByteSerializer.ObjectToByteArray(v));
+                            server.SendDiscoveryResponse(outMsg, inMsg.SenderEndPoint);
                             break;
 
                         default:
-                            Console.WriteLine($"Unhandled message type: {inMsg.MessageType}");
+                            Console.WriteLine($"Unhandled message received of type: {inMsg.MessageType}");
                             break;
                     }
                     server.Recycle(inMsg);
@@ -196,7 +217,7 @@ namespace Networking_Game.ClientServer
 
         private void ClaimSquare(NetIncomingMessage inMsg)
         {
-                    var player = GetPlayerConnection(inMsg.SenderConnection).player;
+                    Player player = GetPlayerConnection(inMsg.SenderConnection).player;
                     // Make sure it is this players turn 
                     if (player != clients[playerTurnIndex % clients.Count].player)
                     {
@@ -254,7 +275,7 @@ namespace Networking_Game.ClientServer
 
         private void SendGameData(PlayerConnection recipient)
         {
-            var outMsg = server.CreateMessage();
+            NetOutgoingMessage outMsg = server.CreateMessage();
 
             // Grid
             outMsg = grid.CreateGridDataMessage(server);
@@ -319,7 +340,7 @@ namespace Networking_Game.ClientServer
     }
 
     [Serializable]
-    public struct GameServerArguments
+    public struct GameServerArgument
     {
         public int sizeX;
         public int sizeY;
@@ -329,9 +350,9 @@ namespace Networking_Game.ClientServer
 
         public int port;
 
-        public static GameServerArguments CreateFromConsoleInput()
+        public static GameServerArgument CreateFromConsoleInput()
         {
-            GameServerArguments args = new GameServerArguments();
+            GameServerArgument args = new GameServerArgument();
             string s;
             // Get sizeX
             do s = ConsoleManager.WaitGetPriorityInput("Input grid size along the X-axis: ", false);
@@ -352,13 +373,13 @@ namespace Networking_Game.ClientServer
             return args;
         }
 
-        // TODO: Use reflection instead?
+        // Q: Use reflection instead?
         public override string ToString()
         {
             return $"{sizeX}|{sizeY}|{maxPlayers}|{minPlayers}|{port}";
         }
 
-        public bool TryParse(string s, out GameServerArguments args)
+        public bool TryParse(string s, out GameServerArgument args)
         {
             try
             {
@@ -372,7 +393,7 @@ namespace Networking_Game.ClientServer
             }
         }
 
-        public GameServerArguments Parse(string s)
+        public GameServerArgument Parse(string s)
         {
             // Separate string
             string[] ss = s.Split('|');
@@ -384,7 +405,7 @@ namespace Networking_Game.ClientServer
                 ints[i] = int.Parse(ss[i]);
             }
 
-            GameServerArguments output = new GameServerArguments();
+            GameServerArgument output = new GameServerArgument();
 
             output.sizeX = ints[0];
             output.sizeY = ints[1];

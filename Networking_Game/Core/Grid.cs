@@ -94,31 +94,25 @@ namespace Networking_Game
 
         public readonly int sizeX;
         public readonly int sizeY;
-        public readonly int? minPlayers; // TODO: Implement minPlayers
+        public readonly int minPlayers;
         public readonly int maxPlayers;
         private const int minLineLength = 3;
 
         public GridSquare[,] Squares => squares;
 
+        public Grid(Point gridSize, int maxPlayers) : this(gridSize.X, gridSize.Y, maxPlayers, 1) { }
+
         public Grid(int sizeX, int sizeY, int maxPlayers, int minPlayers)
-        {
-            this.sizeX = sizeX;
-            this.sizeY = sizeY;
-            this.maxPlayers = maxPlayers;
-            this.minPlayers = minPlayers;
-        }
-
-        public Grid(Point gridSize, int maxPlayers) : this(gridSize.X, gridSize.Y, maxPlayers) { }
-
-        public Grid(int sizeX, int sizeY, int maxPlayers)
         {
             if (sizeX < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeX), $"Must be greater than {minLineLength}");// TODO: fix error message
             if (sizeY < minLineLength) throw new ArgumentOutOfRangeException(nameof(sizeY), $"Must be greater than {minLineLength}");
-            if (maxPlayers > MaxPlayers || maxPlayers < 2) throw new ArgumentOutOfRangeException(nameof(maxPlayers), $"Must be greater than 1 and less than {MaxPlayers}");
+            if (maxPlayers > MaxPlayers || maxPlayers < 2) throw new ArgumentOutOfRangeException(nameof(maxPlayers), $"Must be greater than 1 and less than {MaxPlayers+1}");
+            if (maxPlayers > MaxPlayers || maxPlayers < 2) throw new ArgumentOutOfRangeException(nameof(minPlayers), $"Must be greater than 0 and less than {MaxPlayers+1}");
 
             this.sizeX = sizeX;
             this.sizeY = sizeY;
             this.maxPlayers = maxPlayers; 
+            this.minPlayers = minPlayers;
 
             squares = new GridSquare[sizeX,sizeY];
             for (int x = 0; x < squares.GetLength(0); x++)
@@ -290,8 +284,8 @@ namespace Networking_Game
 
         public static Grid GetGameSettingsInput() // TODO: Move to Core/ConsoleManager
         {
-            // TODO: add min players?
             int maxPlayers;
+            int minPlayers;
             int gridSizeX;
             int gridSizeY;
 
@@ -331,7 +325,7 @@ namespace Networking_Game
                 break;
             }
 
-            // Get max players TODO: move max and min players out of Grid
+            // Get max players Q: move max and min players out of Grid?
             while (true)
             {
                 var input = ConsoleManager.WaitGetPriorityInput("Input maximum amount of players: ");
@@ -348,7 +342,26 @@ namespace Networking_Game
                 maxPlayers = result;
                 break;
             }
-            return new Grid(gridSizeX, gridSizeY, maxPlayers); 
+
+            // Get min players
+            while (true)
+            {
+                var input = ConsoleManager.WaitGetPriorityInput("Input minimum amount of players: ");
+                if (!int.TryParse(input, out int result))
+                {
+                    Console.WriteLine("Input is not an integer, try again.", System.Drawing.Color.Red);
+                    continue;
+                }
+                if (result < 1 || result > Grid.MaxPlayers)
+                {
+                    Console.WriteLine($"Input must be in range 1 to {MaxPlayers}", System.Drawing.Color.Red);
+                    continue;
+                }
+                minPlayers = result;
+                break;
+            }
+
+            return new Grid(gridSizeX, gridSizeY, maxPlayers, minPlayers); 
         }
     }
 }
