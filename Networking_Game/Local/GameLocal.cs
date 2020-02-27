@@ -11,7 +11,7 @@ using Console = Colorful.Console;
 
 namespace Networking_Game.Local
 {
-    class GameLocal : GameCore
+    public class GameLocal : GameCore
     {
         private MouseState previousMouseState;
         private bool newTurn;
@@ -23,10 +23,11 @@ namespace Networking_Game.Local
             // Initialize mouse state
             previousMouseState = Mouse.GetState();
 
+
+            base.Initialize();     
+            
             // Start Default game
             NewGame();
-
-            base.Initialize();            
         }
 
         private void NewGame()
@@ -35,13 +36,14 @@ namespace Networking_Game.Local
 
             ConfigureCamera();
 
-            // Create players
+            // Create players TODO: handle minPlayers
             players = new List<Player>(grid.maxPlayers);
             for (int i = 0; i < grid.maxPlayers; i++)
             {
                 // Prompt for player settings
                 Console.WriteLine("Creating player " + (i + 1), Color.White);
-                players[i] = Player.GetPlayerSettingsInput();
+                var v = Player.GetPlayerSettingsInput();
+                players[i] = v; // BUG: crashes here because of unknown reason
             }
 
             newTurn = true;
@@ -62,7 +64,7 @@ namespace Networking_Game.Local
                 // Write whose turn it is
                 if (newTurn)
                 {
-                    Console.Write($"{ActivePlayer.Name}´s turn, ", Color.FromKnownColor(ActivePlayer.Color));
+                    Console.Write($"{ActivePlayer.Name}´s turn, ", new Microsoft.Xna.Framework.Color((uint)ActivePlayer.Color).ToSystemColor());
                     newTurn = false;
                 }
 
@@ -82,7 +84,7 @@ namespace Networking_Game.Local
                             if (grid.ClaimSquare((Point)sq, ActivePlayer))
                             {
                                 // Change active player
-                                NextPlayer();
+                                NextTurn();
                             }
                         }
                     }

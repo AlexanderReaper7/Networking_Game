@@ -1,16 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using Tools_XNA_dotNET_Framework;
-using Color = Microsoft.Xna.Framework.Color;
 using Console = Colorful.Console;
-using Point = Microsoft.Xna.Framework.Point;
 
 namespace Networking_Game
 {
@@ -20,75 +12,67 @@ namespace Networking_Game
         Cross,
         Rectangle,
         Triangle,
-        Diamond,
+        Diamond
+    }
+
+    public enum PlayerColor
+    {
+        Red,
+        Orange,
+        Yellow,
+        Blue,
+        Cyan,
+        Lime,
+        Green,
+        Teal,
+        Purple,
+        Pink,
+        HotPink
+    }
+
+    public static class PlayerColors
+    {
+        public static Color[] Colors = {Color.Red, Color.Orange, Color.Yellow, Color.Blue, Color.Cyan, Color.Lime, Color.Green, Color.Teal, Color.Purple, Color.Pink, Color.HotPink};
     }
 
     /// <summary>
-    /// Contains drawing methods for the different player shapes
+    ///     Contains drawing methods for the different player shapes
     /// </summary>
     [Serializable]
     public class Player
     {
-        public string Name { get; private set; }
-        public PlayerShape Shape { get; private set; }
-        public KnownColor Color // TODO: change valid colors so you can always see the color and there´s no similar ones.
-        {
-            get =>  knownColor;
-            private set => knownColor = value;
-        }
-
-        public int Score { get; set; }
-
-        private Color color => System.Drawing.Color.FromKnownColor(knownColor).ToXNAColor();
-        private KnownColor knownColor;
-
-        public Player(string name, PlayerShape shape, KnownColor color)
+        public Player(string name, PlayerShape shape, PlayerColor color)
         {
             Name = name;
-            Shape = shape; 
+            Shape = shape;
             Color = color;
         }
 
-        
+        public string Name { get; private set; }
+        public PlayerShape Shape { get; private set; }
+        public PlayerColor Color { get; private set; }
+        public int Score { get; set; }
 
-        public void Draw(SpriteBatch spriteBatch, Vector2 position, GridLayout gridLayout)
+        public Color drawingColor
         {
-            float halfSquare = gridLayout.SquareSize / 2f;
-            switch (Shape)
-            {
-                case PlayerShape.Circle:
-                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 32, color);
-                    break;
+            get { return PlayerColors.Colors[(int) Color]; }
+        }
 
-                case PlayerShape.Cross:
-                    float x1, x2, y1, y2;
-                    x1 = position.X + gridLayout.LineThickness * 2;
-                    x2 = position.X + gridLayout.SquareSize - gridLayout.LineThickness *2;
-                    y1 = position.Y + gridLayout.LineThickness * 2.5f;
-                    y2 = position.Y + gridLayout.SquareSize - gridLayout.LineThickness *2;
-                    spriteBatch.DrawLine(x1, y1, x2, y2, color);
-                    spriteBatch.DrawLine(x2, y1 + gridLayout.LineThickness/2, x1, y2 + gridLayout.LineThickness/2, color);
-                    break;
-                    
-                case PlayerShape.Rectangle:
-                    spriteBatch.DrawRectangle(position + new Vector2(gridLayout.LineThickness, gridLayout.LineThickness * 2), new Vector2(gridLayout.SquareSize - (gridLayout.LineThickness * 4)), color);
-                    break;
+        public static Player GetRandomisedPlayer()
+        {
+            Random rand = new Random();
 
-                case PlayerShape.Triangle:
-                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 3, color);
-                    break;
+            PlayerShape shape;
+            PlayerColor color;
 
-                case PlayerShape.Diamond:
-                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - (gridLayout.LineThickness * 1.5f), 4, color);
-                    break;
+            shape = (PlayerShape) rand.Next(0, Enum.GetValues(typeof(PlayerShape)).Length - 1);
+            color = (PlayerColor) rand.Next(0, Enum.GetValues(typeof(PlayerColor)).Length - 1);
 
-                default:
-                    throw new NotImplementedException(nameof(Shape) + " is not implemented yet.");
-            }
+            return new Player($"{Enum.GetName(typeof(PlayerColor), color)} {Enum.GetName(typeof(PlayerShape), shape)}", shape, color);
         }
 
         /// <summary>
-        /// Gets input for a player
+        ///     Gets input for a player
         /// </summary>
         /// <param name="player"></param>
         public static Player GetPlayerSettingsInput()
@@ -98,7 +82,7 @@ namespace Networking_Game
             const int maxNameLength = 12;
             while (true)
             {
-                Console.Write($"Input name:  ", System.Drawing.Color.White);
+                Console.Write("Input name:  ", System.Drawing.Color.White);
                 name = ConsoleManager.GetPriorityInput();
                 if (name.Length > maxNameLength)
                 {
@@ -112,7 +96,7 @@ namespace Networking_Game
                     continue;
                 }
 
-                if (name == "empty") System.Console.WriteLine("i guess it can be empty..."); 
+                if (name == "empty") System.Console.WriteLine("i guess it can be empty...");
                 break;
             }
 
@@ -122,10 +106,7 @@ namespace Networking_Game
             {
                 // Write available shapes
                 Console.WriteLine("Available shapes: ", System.Drawing.Color.White);
-                foreach (var s in Enum.GetNames(typeof(PlayerShape)))
-                {
-                    Console.WriteLine(s, System.Drawing.Color.White);
-                }
+                foreach (string s in Enum.GetNames(typeof(PlayerShape))) Console.WriteLine(s, System.Drawing.Color.White);
                 Console.Write("Input shape: ", System.Drawing.Color.White);
                 string str = ConsoleManager.GetPriorityInput();
                 if (int.TryParse(str, out int shapeInt))
@@ -135,7 +116,8 @@ namespace Networking_Game
                         Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
                         continue;
                     }
-                    shape = (PlayerShape)shapeInt - 1;
+
+                    shape = (PlayerShape) shapeInt - 1;
                 }
                 else
                 {
@@ -145,32 +127,64 @@ namespace Networking_Game
                         continue;
                     }
                 }
+
                 break;
-                
             }
 
-            // Get color TODO: make example colors random
-            KnownColor color;
+            // Get drawingColor
+            PlayerColor color;
             while (true)
             {
-                System.Drawing.Color[] exampleColors = new System.Drawing.Color[] { System.Drawing.Color.Red, System.Drawing.Color.Blue, System.Drawing.Color.Yellow, System.Drawing.Color.Cyan, System.Drawing.Color.PeachPuff, System.Drawing.Color.White, };
-                Console.WriteLine("Example colors: ", System.Drawing.Color.White);
-                foreach (System.Drawing.Color exampleColor in exampleColors)
-                {
-                    Console.Write(exampleColor.ToKnownColor() + " ", exampleColor);
-                }
-                Console.WriteLine();
-                Console.Write("Input color: ", System.Drawing.Color.White);
-                if (!Enum.TryParse(ConsoleManager.GetPriorityInput(), true, out color))
+                Console.Write("Colors: ", System.Drawing.Color.White);
+                string[] cs = Enum.GetNames(typeof(PlayerColor));
+                for (int i = 0; i < cs.Length; i++) Console.Write($"{cs[i]} ", PlayerColors.Colors[i].ToSystemColor());
+                if (!Enum.TryParse(ConsoleManager.WaitGetPriorityInput("\nInput color: ", false), true, out color))
                 {
                     Console.WriteLine("incorrect input, try again.", System.Drawing.Color.Red);
                     continue;
                 }
+
                 break;
             }
 
-            Console.WriteLine($"Created player {name} using {color} {shape}.", System.Drawing.Color.FromKnownColor(color));
+            Console.WriteLine($"Created player {name} using {color} {shape}.", PlayerColors.Colors[(int) color].ToSystemColor());
             return new Player(name, shape, color);
+        }
+
+
+        public void Draw(SpriteBatch spriteBatch, Vector2 position, GridLayout gridLayout)
+        {
+            float halfSquare = gridLayout.SquareSize / 2f;
+            switch (Shape)
+            {
+                case PlayerShape.Circle:
+                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - gridLayout.LineThickness * 1.5f, 32, drawingColor);
+                    break;
+
+                case PlayerShape.Cross:
+                    float x1, x2, y1, y2;
+                    x1 = position.X + gridLayout.LineThickness * 2;
+                    x2 = position.X + gridLayout.SquareSize - gridLayout.LineThickness * 2;
+                    y1 = position.Y + gridLayout.LineThickness * 2.5f;
+                    y2 = position.Y + gridLayout.SquareSize - gridLayout.LineThickness * 2;
+                    spriteBatch.DrawLine(x1, y1, x2, y2, drawingColor);
+                    spriteBatch.DrawLine(x2, y1 + gridLayout.LineThickness / 2, x1, y2 + gridLayout.LineThickness / 2, drawingColor);
+                    break;
+
+                case PlayerShape.Rectangle:
+                    spriteBatch.DrawRectangle(position + new Vector2(gridLayout.LineThickness, gridLayout.LineThickness * 2), new Vector2(gridLayout.SquareSize - gridLayout.LineThickness * 4), drawingColor);
+                    break;
+
+                case PlayerShape.Triangle:
+                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - gridLayout.LineThickness * 1.5f, 3, drawingColor);
+                    break;
+
+                case PlayerShape.Diamond:
+                    spriteBatch.DrawCircle(position + new Vector2(halfSquare - gridLayout.LineThickness * 0.5f, halfSquare + gridLayout.LineThickness * 0.5f), halfSquare - gridLayout.LineThickness * 1.5f, 4, drawingColor);
+                    break;
+
+                default: throw new NotImplementedException(nameof(Shape) + " is not implemented yet.");
+            }
         }
     }
 }

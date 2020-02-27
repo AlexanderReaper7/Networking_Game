@@ -1,4 +1,6 @@
 ﻿using System;
+using Networking_Game;
+
 
 namespace GamePeer2Peer
 {
@@ -11,10 +13,10 @@ namespace GamePeer2Peer
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        [STAThread]
+        [MTAThread]
         static void Main()
         {
-            using (var game = new Game1())
+            using (var game = new Networking_Game.P2P.GamePeer())
                 game.Run();
         }
     }

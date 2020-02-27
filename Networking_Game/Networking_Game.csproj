@@ -54,9 +54,11 @@
     <Compile Include="ClientServer\GameServer.cs" />
     <Compile Include="Core\ConsoleManager.cs" />
     <Compile Include="Core\GameCore.cs" />
+    <None Include="Core\GameNetwork.cs" />
     <Compile Include="Core\Grid.cs" />
     <Compile Include="Local\GameLocal.cs" />
-    <Compile Include="Peer2Peer\GamePeer.cs" />
+    <Compile Include="P2P\Data.cs" />
+    <Compile Include="P2P\GamePeer.cs" />
     <Compile Include="Core\Player.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

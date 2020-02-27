@@ -2,25 +2,35 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Lidgren.Network;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Networking_Game.ClientServer;
 using Tools_XNA_dotNET_Framework;
+using Console = Colorful.Console;
 
-namespace Networking_Game.ClientServer
+namespace Networking_Game
 {
-    /// <summary>
-    ///     The client for the client-server version of the game
-    /// </summary>
-    public class GameClient : GameCore
+    class GameNetwork : GameCore
     {
-        NetClient client;
-        bool gameActive;
-        Dictionary<IPEndPoint, FoundServer> gameServers;
-        bool isMessageReadLoopRunning;
-        Player localPlayer;
-        Thread messageHandlerThread, gameActivityThread;
+        private Thread messageHandlerThread, gameActivityThread;
+        private bool isMessageReadLoopRunning;
+        private bool gameActive;
+        private Player localPlayer;
+        private Dictionary<IPEndPoint, FoundGame> gameServers;
+
+
+        private enum Commands
+        {
+            ListServers,
+            Connect,
+            Discover,
+            Help,
+            Commands
+        }
 
         protected override void Initialize()
         {
@@ -32,7 +42,7 @@ namespace Networking_Game.ClientServer
 
             StartClient();
 
-            gameServers = new Dictionary<IPEndPoint, FoundServer>();
+            gameServers = new Dictionary<IPEndPoint, FoundGame>();
             Thread.Sleep(1000);
             // Discover servers
             DiscoverServers();
@@ -44,64 +54,14 @@ namespace Networking_Game.ClientServer
             base.Initialize();
         }
 
-        /// <summary>
-        ///     Gets client port from console input
-        /// </summary>
-        /// <returns></returns>
-        static int GetClientPort()
-        {
-            int port;
-            string s;
-
-            // Get client port
-            do s = ConsoleManager.WaitGetPriorityInput("Input client port: ", false);
-            while (!int.TryParse(s, out port));
-
-            return port;
-        }
-
-        static IPEndPoint GetServerAddress()
-        {
-            IPAddress ip;
-            int port;
-
-            // Request server ip from user
-            while (true)
-            {
-                // Get user input
-                string input = ConsoleManager.WaitGetPriorityInput("Input server IP adress: ", false);
-                // Parse input
-                if (IPAddress.TryParse(input, out ip)) break;
-                Console.WriteLine($"{input} is not a valid IP adress.");
-            }
-
-            // Request server port from user
-            while (true)
-            {
-                // Get user input
-                string input = ConsoleManager.WaitGetPriorityInput("Input server port: ", false);
-                // parse input
-                if (int.TryParse(input, out port)) break;
-                Console.WriteLine($"{input} is not a valid port.");
-            }
-
-            return new IPEndPoint(ip, port);
-        }
-
-        void WaitForGameActive()
+        private void WaitForGameActive()
         {
             while (!gameActive) Thread.Sleep(333);
 
             action -= WaitForGameActive;
         }
 
-        void confcam()
-        {
-            ConfigureCamera();
-            action -= confcam;
-        }
-
-        void ActivityCheck()
+        private void ActivityCheck()
         {
             // If no game is active
             if (!gameActive)
@@ -109,39 +69,36 @@ namespace Networking_Game.ClientServer
                 // Ask user for command
                 string s = ConsoleManager.WaitGetPriorityInput("Input command: ", false);
                 if (Enum.TryParse(s, true, out Commands command))
-                {
                     switch (command)
                     {
                         case Commands.ListServers:
                             ListFoundServers();
                             break;
-
                         case Commands.Connect:
                             DirectConnectServer(GetServerAddress());
                             break;
-
                         case Commands.Discover:
                             DiscoverServers();
                             break;
-
                         case Commands.Help:
                         case Commands.Commands:
                             // List commands
-                            Console.WriteLine("Commands:");
-                            foreach (string c in Enum.GetNames(typeof(Commands))) Console.WriteLine(c);
+                            System.Console.WriteLine("Commands:");
+                            foreach (string c in Enum.GetNames(typeof(Commands))) System.Console.WriteLine(c);
                             break;
-
                         default:
-                            Console.WriteLine("Unrecognized command");
+                            System.Console.WriteLine("Unrecognized command");
                             break;
                     }
-                }
-                else Console.WriteLine("Unrecognized command");
+                else System.Console.WriteLine("Unrecognized command");
             }
-            else Thread.Sleep(1000);
+            else
+            {
+                Thread.Sleep(1000);
+            }
         }
 
-        void StartClient()
+        private void StartClient()
         {
             // TODO: add NAT/UPnP
             // Create config
@@ -159,7 +116,7 @@ namespace Networking_Game.ClientServer
             StartMessageReaderThread();
         }
 
-        void StartMessageReaderThread()
+        private void StartMessageReaderThread()
         {
             messageHandlerThread = new Thread(() =>
             {
@@ -171,17 +128,17 @@ namespace Networking_Game.ClientServer
         }
 
         /// <summary>
-        ///     Uses network discovery to find servers
+        /// Uses network discovery to find servers
         /// </summary>
-        void DiscoverServers()
+        private void DiscoverServers()
         {
             // Discover on default port
-            Colorful.Console.WriteLine("Discovering Servers...");
+            Console.WriteLine("Discovering Servers...");
             client.DiscoverLocalPeers(Program.DefaultPort);
 
             // Check for answers after x seconds
             Thread.Sleep(2000);
-            Console.WriteLine($"Found {gameServers.Count} server(s)");
+            System.Console.WriteLine($"Found {gameServers.Count} server(s)");
 
             // Ask user if to continue to discover on custom port
             do
@@ -193,39 +150,90 @@ namespace Networking_Game.ClientServer
                     // Parse input
                     if (int.TryParse(s, out int p))
                     {
-                        Colorful.Console.WriteLine("Discovering Servers...");
+                        Console.WriteLine("Discovering Servers...");
                         client.DiscoverLocalPeers(p);
                         Thread.Sleep(1200);
-                        Console.WriteLine($"Found {gameServers.Count} server(s)");
+                        System.Console.WriteLine($"Found {gameServers.Count} server(s)");
                     }
-                    else Console.WriteLine("input is not a valid port");
+                    else
+                    {
+                        System.Console.WriteLine("input is not a valid port");
+                    }
                 }
-                else break; // If input is empty stop discovery
-            }
-            while (true);
+                else
+                {
+                    break; // If input is empty stop discovery
+                }
+            } while (true);
         }
 
 
         /// <summary>
-        ///     Attempts to connect to a server
+        /// Attempts to connect to a server
         /// </summary>
-        void DirectConnectServer(IPEndPoint endPoint)
+        private void DirectConnect(IPEndPoint endPoint)
         {
             // Create player data
             byte[] arrPlayer = ByteSerializer.ObjectToByteArray(localPlayer);
-            NetOutgoingMessage om = client.CreateMessage(arrPlayer.Length);
+            var om = peer.CreateMessage(arrPlayer.Length);
             om.Write(arrPlayer);
             // Connect to server
-            client.Connect(endPoint.Address.ToString(), endPoint.Port, om);
+            peer.Connect(endPoint.Address.ToString(), endPoint.Port, om);
         }
 
-        void ReadMessages()
+        /// <summary>
+        /// Gets client port from console input
+        /// </summary>
+        /// <returns></returns>
+        private static int GetClientPort()
+        {
+            int port;
+            string s;
+
+            // Get client port
+            do
+            {
+                s = ConsoleManager.WaitGetPriorityInput("Input client port: ", false);
+            } while (!int.TryParse(s, out port));
+
+            return port;
+        }
+
+        private static IPEndPoint GetServerAddress()
+        {
+            IPAddress ip;
+            int port;
+
+            // Request server ip from user
+            while (true)
+            {
+                // Get user input
+                string input = ConsoleManager.WaitGetPriorityInput("Input server IP adress: ", false);
+                // Parse input
+                if (IPAddress.TryParse(input, out ip)) break;
+                else System.Console.WriteLine($"{input} is not a valid IP adress.");
+            }
+
+            // Request server port from user
+            while (true)
+            {
+                // Get user input
+                string input = ConsoleManager.WaitGetPriorityInput("Input server port: ", false);
+                // parse input
+                if (int.TryParse(input, out port)) break;
+                else System.Console.WriteLine($"{input} is not a valid port.");
+            }
+
+            return new IPEndPoint(ip, port);
+        }
+
+        private void ReadMessages()
         {
             NetIncomingMessage inMsg;
             if ((inMsg = client.ReadMessage()) != null)
             {
 #if DEBUG
-                Console.WriteLine($"msg: {inMsg.MessageType}");
+                System.Console.WriteLine($"msg: {inMsg.MessageType}");
 #endif
                 switch (inMsg.MessageType)
                 {
@@ -238,11 +246,11 @@ namespace Networking_Game.ClientServer
                         // Check if server already is found
                         if (gameServers.ContainsKey(inMsg.SenderEndPoint)) break;
                         // Parse server status data
-                        FoundServer fs = ByteSerializer.ByteArrayToObject<FoundServer>(inMsg.Data);
+                        FoundGame fs = ByteSerializer.ByteArrayToObject<FoundGame>(inMsg.Data);
                         // Add server to list
                         gameServers.Add(inMsg.SenderEndPoint, fs);
 
-                        Console.WriteLine($"Discovered server at: {inMsg.SenderEndPoint}");
+                        System.Console.WriteLine($"Discovered server at: {inMsg.SenderEndPoint}");
                         break;
 
                     case NetIncomingMessageType.StatusChanged:
@@ -252,7 +260,7 @@ namespace Networking_Game.ClientServer
                             case NetConnectionStatus.Connected:
                             case NetConnectionStatus.Disconnecting:
                             case NetConnectionStatus.Disconnected:
-                                Console.WriteLine($"{inMsg.SenderConnection.Status} from {inMsg.SenderConnection.RemoteEndPoint}");
+                                System.Console.WriteLine($"{inMsg.SenderConnection.Status} from {inMsg.SenderConnection.RemoteEndPoint}");
                                 break;
                         }
 
@@ -260,18 +268,18 @@ namespace Networking_Game.ClientServer
 
                     case NetIncomingMessageType.DebugMessage:
                         // handle debug messages (only received when compiled in DEBUG mode)
-                        Console.WriteLine(inMsg.ReadString());
+                        System.Console.WriteLine(inMsg.ReadString());
                         break;
                 }
             }
         }
 
-        void Process(NetIncomingMessage inMsg)
+        private void Process(NetIncomingMessage inMsg)
         {
             // Read packet type
             PacketType packetType = (PacketType) inMsg.ReadUInt16();
 #if DEBUG
-            Console.WriteLine("type: " + packetType);
+            System.Console.WriteLine("type: " + packetType);
 #endif
             switch (packetType)
             {
@@ -284,27 +292,23 @@ namespace Networking_Game.ClientServer
                     // Claim square
                     grid.ClaimSquare(new Point(x, y), pl);
                     break;
-
                 case PacketType.EndGame:
                     EndGame();
                     gameActive = false;
                     break;
-
                 case PacketType.PlayerConnected:
                     // Add player to players
                     Player newPlayer = ByteSerializer.ByteArrayToObject<Player>(inMsg.ReadBytes(inMsg.Data.Length - 2));
                     players.Add(newPlayer);
                     break;
-
                 case PacketType.PlayerDisconnected:
                     // Add player to players
                     Player player = ByteSerializer.ByteArrayToObject<Player>(inMsg.ReadBytes(inMsg.Data.Length - 2));
                     players.Remove(player);
                     break;
-
                 case PacketType.NextTurn:
                     string n = inMsg.ReadString();
-                    Console.WriteLine($"It is {n}´s turn.");
+                    System.Console.WriteLine($"It is {n}´s turn.");
                     if (localPlayer.Name == n)
                     {
                         Thread t = new Thread(LocalPlayerTurn) {Name = nameof(LocalPlayerTurn)};
@@ -312,39 +316,36 @@ namespace Networking_Game.ClientServer
                     }
 
                     break;
-
                 case PacketType.FailedClaimSquare:
                     Thread tr = new Thread(LocalPlayerTurn) {Name = nameof(LocalPlayerTurn)};
                     tr.Start();
                     break;
-
                 case PacketType.GridData:
                     grid = ByteSerializer.ByteArrayToObject<Grid>(inMsg.ReadBytes(inMsg.Data.Length - 2));
-                    action += confcam;
+                    action += ConfigureCamera;
                     break;
-
                 case PacketType.StartGame:
                     gameActive = true;
                     break;
-
-                default: throw new ArgumentOutOfRangeException(nameof(PacketType), "unknown packet type");
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(PacketType), "unknown packet type");
             }
         }
 
-        void ListFoundServers()
+        private void ListFoundServers()
         {
-            foreach (KeyValuePair<IPEndPoint, FoundServer> valuePair in gameServers)
+            foreach (KeyValuePair<IPEndPoint, FoundGame> valuePair in gameServers)
             {
-                FoundServer fs = valuePair.Value;
+                FoundGame fs = valuePair.Value;
 
-                Console.WriteLine($"Server {valuePair.Key}:");
-                Console.WriteLine($" Grid {fs.gridSizeX} * {fs.gridSizeY}");
-                Console.WriteLine($" {fs.maxPlayers} Max players, {fs.minPlayers} Min players");
-                Console.WriteLine($" {fs.currentPlayers} Current players");
+                System.Console.WriteLine($"Server {valuePair.Key}:");
+                System.Console.WriteLine($" Grid {fs.gridSizeX} * {fs.gridSizeY}");
+                System.Console.WriteLine($" {fs.maxPlayers} Max players, {fs.minPlayers} Min players");
+                System.Console.WriteLine($" {fs.currentPlayers} Current players");
             }
         }
 
-        void LocalPlayerTurn()
+        private void LocalPlayerTurn()
         {
             MouseState previousMouseState = Mouse.GetState();
             while (true)
@@ -354,7 +355,6 @@ namespace Networking_Game.ClientServer
 
                 // Place marker on mouse left click
                 if (mouseState.LeftButton == ButtonState.Pressed)
-                {
                     if (previousMouseState.LeftButton == ButtonState.Released)
                     {
                         // Get the position of the mouse in the world
@@ -363,7 +363,6 @@ namespace Networking_Game.ClientServer
                         Point? sq = grid.SquareContains(mouseWorldPos, gridLayout);
                         // If that square is valid, then claim it
                         if (sq != null)
-                        {
                             // If the claim was successful
                             if (grid.ClaimSquare((Point) sq, ActivePlayer))
                             {
@@ -372,35 +371,23 @@ namespace Networking_Game.ClientServer
                                 client.SendMessage(outMsg, NetDeliveryMethod.ReliableOrdered);
                                 return;
                             }
-                        }
                     }
-                }
 
                 previousMouseState = mouseState;
             }
         }
-
-
-        enum Commands
-        {
-            ListServers,
-            Connect,
-            Discover,
-            Help,
-            Commands
-        }
     }
 
     [Serializable]
-    public class FoundServer // Q: use struct instead?
+    public class FoundGame // Q: use struct instead?
     {
-        public readonly int currentPlayers;
         public readonly int gridSizeX;
         public readonly int gridSizeY;
         public readonly int maxPlayers;
         public readonly int minPlayers;
+        public readonly int currentPlayers;
 
-        public FoundServer(int gridSizeX, int gridSizeY, int maxPlayers, int minPlayers, int currentPlayers)
+        public FoundGame(int gridSizeX, int gridSizeY, int maxPlayers, int minPlayers, int currentPlayers)
         {
             this.gridSizeX = gridSizeX;
             this.gridSizeY = gridSizeY;
@@ -409,4 +396,5 @@ namespace Networking_Game.ClientServer
             this.currentPlayers = currentPlayers;
         }
     }
+
 }

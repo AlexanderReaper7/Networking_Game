@@ -14,7 +14,7 @@ using Color = System.Drawing.Color;
 using Colorful;
 using Networking_Game.ClientServer;
 using Networking_Game.Local;
-using Networking_Game.Peer2Peer;
+using Networking_Game.P2P;
 using Console = Colorful.Console;
 
 namespace Networking_Game
