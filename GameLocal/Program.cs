@@ -11,10 +11,12 @@ namespace GameLocal
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
-        [MTAThread]
+        [STAThread]
         static void Main()
         {
+            //using (var game = new Networking_Game.Local.GameLocal())
             using (var game = new Networking_Game.Local.GameLocal())
+
                 game.Run();
         }
     }

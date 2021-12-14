@@ -56,6 +56,7 @@
     <Compile Include="Core\GameCore.cs" />
     <None Include="Core\GameNetwork.cs" />
     <Compile Include="Core\Grid.cs" />
+    <Compile Include="Core\PlayerSelect.cs" />
     <Compile Include="Local\GameLocal.cs" />
     <Compile Include="P2P\Data.cs" />
     <Compile Include="P2P\GamePeer.cs" />
@@ -96,6 +97,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Core\Lidgren Notes.txt" />
     <Content Include="Icon.ico" />
   </ItemGroup>
   <ItemGroup>

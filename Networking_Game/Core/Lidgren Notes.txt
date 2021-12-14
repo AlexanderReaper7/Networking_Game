@@ -1,0 +1,14 @@
+﻿Notes regarding the Lidgren network library
+
+The Lidgren library is a framework for networking in monogame and unity (or C# dotNet in general), it handles the network connection and sending of data over a network.
+It has premade classes for client, server, and peer, each differing somewhat to better fit the needs.
+
+NetPeer contains methods for connecting and sending messages over a network.
+NetMessage contains members to read and write the primitive data types (and others) to a message, which makes it easy to create pakets.
+
+Every message contains a message type member, this identifies what data the message contains, for example, StatusChanged contains a status update for the sending peer.
+
+Additionally, a PacketType enum is written to the beginning of every data message to further identify its contents.
+
+To send a message you must first create an instance of NetPeer and initialize it with a configuration then start it.
+Then you can use network discovery or directly connect to a know IP endpoint. If successful you can now start sending messages to eachother.

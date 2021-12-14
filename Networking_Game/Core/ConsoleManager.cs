@@ -109,6 +109,8 @@ namespace Networking_Game
         /// </summary>
         public static void Start()
         {
+            if (consoleThread != null) return;
+
             AllocConsole();
 
             consoleThread = new Thread(Run);

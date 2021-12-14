@@ -13,10 +13,8 @@ namespace Networking_Game.Local
 {
     public class GameLocal : GameCore
     {
-        private MouseState previousMouseState;
-        private bool newTurn;
-
-        public GameLocal() : base() { }
+        MouseState previousMouseState;
+        bool newTurn;
 
         protected override void Initialize()
         {
@@ -34,18 +32,19 @@ namespace Networking_Game.Local
         {
             grid = Grid.GetGameSettingsInput();
 
-            ConfigureCamera();
 
             // Create players TODO: handle minPlayers
-            players = new List<Player>(grid.maxPlayers);
-            for (int i = 0; i < grid.maxPlayers; i++)
-            {
-                // Prompt for player settings
-                Console.WriteLine("Creating player " + (i + 1), Color.White);
-                var v = Player.GetPlayerSettingsInput();
-                players[i] = v; // BUG: crashes here because of unknown reason
-            }
+            players = PlayerSelect.GetSelectedPlayers(grid.maxPlayers).ToList();
 
+            //for (int i = 0; i < grid.maxPlayers; i++)
+            //{
+            //    // Prompt for player settings
+            //    Console.WriteLine("Creating player " + (i + 1), Color.White);
+            //    var v = Player.GetPlayerSettingsInput();
+            //    players[i] = v; // BUG: crashes here because of unknown reason
+            //}
+
+            ConfigureCamera();
             newTurn = true;
             turnNumber = 1;
             Console.WriteLine("Starting game", Color.White);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Xml;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -68,7 +69,7 @@ namespace Networking_Game
     public class Grid
     {
         const int minLineLength = 3;
-        public static readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(KnownColor)).Length;
+        public static readonly int MaxPlayers = Enum.GetNames(typeof(PlayerShape)).Length * Enum.GetNames(typeof(PlayerColor)).Length;
         public readonly int maxPlayers;
         public readonly int minPlayers;
 
@@ -90,12 +91,24 @@ namespace Networking_Game
             this.minPlayers = minPlayers;
 
             Squares = new GridSquare[sizeX, sizeY];
-            for (int x = 0; x < Squares.GetLength(0); x++)
-            for (int y = 0; y < Squares.GetLength(1); y++)
-                Squares[x, y] = new GridSquare();
+            Squares.Initialize();
+            //for (int x = 0; x < Squares.GetLength(0); x++)
+            //for (int y = 0; y < Squares.GetLength(1); y++)
+            //    Squares[x, y] = new GridSquare();
         }
 
-        public GridSquare[,] Squares { get; }
+        public GridSquare[,] Squares { get; private set; }
+
+        public static Grid GeneratePlayerSelectGrid(Player[] players)
+        {
+            var output = new Grid(Enum.GetValues(typeof(PlayerColor)).Length, Enum.GetValues(typeof(PlayerShape)).Length, players.Length, players.Length);
+            for (int i = 0; i < players.Length; i++)
+            {
+                output.Squares[i % output.sizeX, i / output.sizeX].Owner = players[i];
+            }
+
+            return output;
+        }
 
         public static Grid GetGameSettingsInput() // TODO: Move to Core/ConsoleManager
         {
@@ -322,7 +335,10 @@ namespace Networking_Game
                     // Draw image on the square the mouse is in
                     if (mouseSquare != null)
                     {
-                        if (mouseSquare.Value.X == j && mouseSquare.Value.Y == i) { spriteBatch.DrawFilledRectangle(j * gridLayout.SquareSize + gridLayout.Position.X - gridLayout.LineThickness / 2, i * gridLayout.SquareSize + gridLayout.Position.Y + gridLayout.LineThickness / 2, gridLayout.SquareSize, gridLayout.SquareSize, gridLayout.MouseOverlayColor); }
+                        if (mouseSquare.Value.X == j && mouseSquare.Value.Y == i)
+                        {
+                            spriteBatch.DrawFilledRectangle(j * gridLayout.SquareSize + gridLayout.Position.X - gridLayout.LineThickness / 2, i * gridLayout.SquareSize + gridLayout.Position.Y + gridLayout.LineThickness / 2, gridLayout.SquareSize, gridLayout.SquareSize, gridLayout.MouseOverlayColor);
+                        }
                     }
                 }
             }

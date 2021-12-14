@@ -71,6 +71,24 @@ namespace Networking_Game
             return new Player($"{Enum.GetName(typeof(PlayerColor), color)} {Enum.GetName(typeof(PlayerShape), shape)}", shape, color);
         }
 
+        public static Player[] GetAllCombinations()
+        {
+            var colors = Enum.GetNames(typeof(PlayerColor));
+            var shapes = Enum.GetNames(typeof(PlayerShape));
+            var output = new Player[colors.Length * shapes.Length];
+            int i = 0;
+            for (int y = 0; y < shapes.Length; y++)
+            {
+                for (int x = 0; x < colors.Length; x++)
+                {
+                    output[i] = new Player($"{colors[x]} {shapes[y]}", (PlayerShape)y, (PlayerColor)x);
+                    i++;
+                }
+            }
+
+            return output;
+        }
+
         /// <summary>
         ///     Gets input for a player
         /// </summary>
